@@ -8,8 +8,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import httpx
+
+from ..logging_setup import get
 from ..models import Candidate, PaperMeta, Ref
 from ..sources import arxiv, s2
+
+log = get("resolve")
 
 
 @dataclass
@@ -46,9 +51,20 @@ def _merge(a: PaperMeta | None, s: PaperMeta | None) -> PaperMeta | None:
 
 async def resolve(ref: Ref) -> ResolveResult:
     if ref.kind == "title":
-        return ResolveResult(candidates=await s2.search_title(ref.value))
+        try:
+            return ResolveResult(candidates=await s2.search_title(ref.value))
+        except httpx.HTTPError as exc:
+            log.warning("S2 title search unavailable (%s)", exc)
+            return ResolveResult()
 
-    s2_meta = await s2.fetch_paper(s2.s2_lookup_id(ref.kind, ref.value))
+    # S2 enriches (tldr, refs, cross-ids) but must not be load-bearing for arXiv ids:
+    # if S2 is throttled/down, an arXiv paper still resolves from arXiv alone (plan §4).
+    s2_meta: PaperMeta | None = None
+    try:
+        s2_meta = await s2.fetch_paper(s2.s2_lookup_id(ref.kind, ref.value))
+    except httpx.HTTPError as exc:
+        log.warning("S2 unavailable for %s (%s) — degrading to arXiv-only", ref.value, exc)
+
     arxiv_id = ref.value if ref.kind == "arxiv" else (s2_meta.arxiv_id if s2_meta else None)
     arxiv_meta = await arxiv.fetch_metadata(arxiv_id) if arxiv_id else None
 

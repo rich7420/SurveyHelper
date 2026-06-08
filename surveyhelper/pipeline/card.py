@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import re
 
+import httpx
+
 from .. import config
 from ..db import analysis, jobs, papers
 from ..logging_setup import get
@@ -82,14 +84,19 @@ async def survey(identifier: str, *, references_limit: int = _DEFAULT_REF_LIMIT,
     # Step 1 — purpose/pain point (no LLM ladder).
     summary, step1_source = _step1_ladder(meta.tldr, meta.abstract)
 
-    # Step 3 — backward references -> graph edges.
+    # Step 3 — backward references -> graph edges. Tolerate S2 being down (plan §4).
     refs: list[Reference] = []
+    step3_failed = False
     if meta.s2_id:
-        refs = await s2.fetch_references(meta.s2_id, references_limit)
-        for r in refs:
-            stub_id = await papers.upsert_reference_stub(r)
-            if stub_id:
-                await papers.add_citation(paper_id, stub_id, "reference", r.is_influential)
+        try:
+            refs = await s2.fetch_references(meta.s2_id, references_limit)
+            for r in refs:
+                stub_id = await papers.upsert_reference_stub(r)
+                if stub_id:
+                    await papers.add_citation(paper_id, stub_id, "reference", r.is_influential)
+        except httpx.HTTPError as exc:
+            log.warning("references unavailable for %s (%s)", paper_id, exc)
+            step3_failed = True
 
     # Step 7 — code.
     code = await github.find_code(meta.github_urls) if meta.github_urls else CodeInfo(found=False)
@@ -97,7 +104,7 @@ async def survey(identifier: str, *, references_limit: int = _DEFAULT_REF_LIMIT,
     step_status = {
         "0": "ok",
         "1": _status_for_step1(step1_source),
-        "3": "ok" if refs else "partial",
+        "3": "failed" if step3_failed else ("ok" if refs else "partial"),
         "7": "ok" if code.found else "skipped",
     }
     await analysis.save(
