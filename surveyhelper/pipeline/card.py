@@ -16,7 +16,7 @@ import re
 import httpx
 
 from .. import config
-from ..db import analysis, jobs, papers
+from ..db import analysis, jobs, papers, personal
 from ..logging_setup import get
 from ..models import Card, CodeInfo, Reference, SurveyResult
 from ..sources import github, s2
@@ -159,7 +159,7 @@ async def _assemble(paper_id: int, *, cached: bool,
                   doi=r["doi"], s2_id=r["s2_id"], is_influential=r["is_influential"])
         for r in ref_rows
     ]
-    return Card(
+    card = Card(
         paper_id=paper_id,
         title=p["title"], authors=p["authors"] or [], year=p["year"], venue=p["venue"],
         arxiv_id=p["arxiv_id"], doi=p["doi"], s2_id=p["s2_id"],
@@ -172,3 +172,14 @@ async def _assemble(paper_id: int, *, cached: bool,
         cached=cached,
         deep_analysis_status=deep_status,
     )
+
+    # Personal layer overlay (plan §7/§11): corrections override fields; attach state.
+    _OVERLAYABLE = {"title", "summary", "year", "venue"}
+    for field, value in (await personal.corrections_for(paper_id)).items():
+        if field in _OVERLAYABLE:
+            setattr(card, field, value)
+            card.corrected_fields.append(field)
+    state_row = await personal.get_state(paper_id)
+    if state_row:
+        card.user_state = state_row["state"]
+    return card

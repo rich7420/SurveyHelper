@@ -13,7 +13,7 @@ from typing import Any
 import asyncpg
 
 from .. import config
-from ..db import analysis, jobs, notifications, papers
+from ..db import analysis, jobs, notifications, papers, personal
 from ..logging_setup import get
 from .card import survey
 from .enrich import enrich
@@ -46,6 +46,7 @@ async def run_expand(job: asyncpg.Record) -> dict[str, Any]:
     max_depth = job["requested_depth"] or 2
 
     await jobs.add_frontier(job_id, root, 0, "full")   # seed (no-op if resuming)
+    dismissed = await personal.dismissed_ids()          # personal dedup (plan §7)
 
     processed = 0
     while processed < MAX_PAPERS_PER_JOB:
@@ -59,6 +60,8 @@ async def run_expand(job: asyncpg.Record) -> dict[str, Any]:
             if depth < max_depth:
                 refs = await papers.references_of(pid)   # influential-first
                 for r in refs[:MAX_REFS_PER_PAPER]:
+                    if r["id"] in dismissed:             # don't resurface dismissed papers
+                        continue
                     await jobs.add_frontier(job_id, r["id"], depth + 1, "full")
             await jobs.set_frontier_status(job_id, pid, "done")
         except Exception as exc:   # dead-letter one node, keep expanding (plan §17)

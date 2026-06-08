@@ -15,7 +15,7 @@ from mcp.server.fastmcp import FastMCP
 from . import config, http
 from .db import close_pool
 from .db import jobs as jobs_repo
-from .db import notifications, papers
+from .db import notifications, papers, personal
 from .logging_setup import get
 from .pipeline.card import _assemble, survey as _survey
 
@@ -99,6 +99,56 @@ async def pending_notifications() -> dict[str, Any]:
     """Undelivered notifications for OpenClaw's heartbeat to surface, then mark read."""
     items = await notifications.pending()
     return {"count": len(items), "notifications": items}
+
+
+# ── personal memory layer (plan §7/§11) ─────────────────────────────────────
+@mcp.tool()
+async def mark_paper(paper_id: int, state: str, why: str | None = None) -> dict[str, Any]:
+    """Record what you did with a paper so surveyHelper remembers it.
+
+    `state` is one of: seen | read | understood | dismissed. `why` captures the intent
+    (the question/topic that prompted it). Dismissed papers won't resurface in expansion.
+    """
+    if state not in personal.VALID_STATES:
+        return {"status": "error", "message": f"state must be one of {sorted(personal.VALID_STATES)}"}
+    if await papers.get(paper_id) is None:
+        return {"status": "not_found", "paper_id": paper_id}
+    await personal.set_state(paper_id, state, why=why)
+    return {"status": "ok", "paper_id": paper_id, "state": state}
+
+
+@mcp.tool()
+async def correct_paper(paper_id: int, field: str, value: str,
+                        note: str | None = None) -> dict[str, Any]:
+    """Override a card field (e.g. title, summary, year, venue). The correction is
+    overlaid on every future read of this paper."""
+    if await papers.get(paper_id) is None:
+        return {"status": "not_found", "paper_id": paper_id}
+    await personal.add_correction(paper_id, field, value, note)
+    return {"status": "ok", "paper_id": paper_id, "field": field}
+
+
+@mcp.tool()
+async def add_interest(label: str) -> dict[str, Any]:
+    """Add a research line you're following (used to focus future work)."""
+    iid = await personal.add_interest(label)
+    return {"status": "ok", "interest_id": iid, "label": label}
+
+
+@mcp.tool()
+async def list_interests() -> dict[str, Any]:
+    """List the research lines you're following."""
+    rows = await personal.list_interests()
+    return {"interests": [{"id": r["id"], "label": r["label"]} for r in rows]}
+
+
+@mcp.tool()
+async def my_papers(state: str | None = None) -> dict[str, Any]:
+    """List papers by your state (seen/read/understood/dismissed), or all if omitted."""
+    rows = await personal.list_by_state(state)
+    return {"count": len(rows),
+            "papers": [{"paper_id": r["id"], "title": r["title"], "arxiv_id": r["arxiv_id"],
+                        "state": r["state"], "why": r["why"]} for r in rows]}
 
 
 def main() -> None:

@@ -119,6 +119,10 @@ class Card(BaseModel):
     cached: bool = False
     deep_analysis_status: str = "not_requested"   # not_requested | queued | ready
 
+    # personal layer (plan §7/§11)
+    user_state: Optional[str] = None              # seen | read | understood | dismissed
+    corrected_fields: list[str] = Field(default_factory=list)
+
 
 class SurveyResult(BaseModel):
     """What the `survey` MCP tool returns: either a card, or candidates to disambiguate."""
