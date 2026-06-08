@@ -73,6 +73,19 @@ async def resolve(ref: Ref, *, use_s2: bool = True) -> ResolveResult:
             log.warning("S2 unavailable for %s (%s) — degrading to arXiv-only", ref.value, exc)
 
     arxiv_id = ref.value if ref.kind == "arxiv" else (s2_meta.arxiv_id if s2_meta else None)
-    arxiv_meta = await arxiv.fetch_metadata(arxiv_id) if arxiv_id else None
+    arxiv_meta: PaperMeta | None = None
+    if arxiv_id:
+        try:
+            arxiv_meta = await arxiv.fetch_metadata(arxiv_id)
+        except httpx.HTTPError as exc:
+            log.warning("arXiv unavailable for %s (%s)", arxiv_id, exc)
+
+    # arXiv must not be a single point of failure either: if it gave nothing and we
+    # have no S2 metadata, fall back to S2 for the base record.
+    if arxiv_meta is None and s2_meta is None and ref.kind == "arxiv":
+        try:
+            s2_meta = await s2.fetch_paper(s2.s2_lookup_id("arxiv", ref.value))
+        except httpx.HTTPError:
+            pass
 
     return ResolveResult(meta=_merge(arxiv_meta, s2_meta))

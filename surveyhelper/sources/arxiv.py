@@ -12,6 +12,8 @@ from ..models import PaperMeta
 
 _BASE = "http://export.arxiv.org/api/query"
 _GH = re.compile(r"https?://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
+# References in arXiv HTML appear as "arXiv:2310.01889" text and/or .../abs/ links.
+_ARXIV_REF = re.compile(r"(?:arxiv\.org/(?:abs|html|pdf)/|arxiv:)(\d{4}\.\d{4,5})", re.I)
 
 
 async def fetch_metadata(arxiv_id: str) -> Optional[PaperMeta]:
@@ -56,3 +58,20 @@ async def fetch_metadata(arxiv_id: str) -> Optional[PaperMeta]:
         text_coverage="full",
         github_urls=sorted(set(_GH.findall(summary))),
     )
+
+
+async def fetch_html_references(arxiv_id: str) -> list[str]:
+    """Keyless reference fallback (DECISIONS: cut the hard S2 dependency).
+
+    Parse the arXiv HTML rendering's bibliography for *referenced arXiv ids*. Only
+    papers with an HTML rendering (LaTeX source, ~Dec 2023+) and arXiv-linked
+    citations yield results — best-effort, degrades to [] otherwise. Returns the
+    cited arXiv ids (self excluded), which our arXiv resolver can canonicalize.
+    """
+    resp = await http.request("arxiv", "GET", f"https://arxiv.org/html/{arxiv_id}")
+    if resp.status_code != 200:
+        return []
+    ids = {m for m in _ARXIV_REF.findall(resp.text)}
+    ids.discard(arxiv_id)
+    ids.discard(arxiv_id.split("v")[0])
+    return sorted(ids)

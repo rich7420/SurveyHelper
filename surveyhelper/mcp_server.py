@@ -7,11 +7,13 @@ via host.docker.internal.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from . import config
+from . import config, http
+from .db import close_pool
 from .db import jobs as jobs_repo
 from .db import notifications, papers
 from .logging_setup import get
@@ -19,7 +21,17 @@ from .pipeline.card import _assemble, survey as _survey
 
 log = get("mcp")
 
-mcp = FastMCP("surveyHelper", host=config.MCP_HOST, port=config.MCP_PORT)
+
+@asynccontextmanager
+async def _lifespan(_server: FastMCP):
+    try:
+        yield {}
+    finally:                       # graceful shutdown: release the shared pool + client
+        await http.aclose()
+        await close_pool()
+
+
+mcp = FastMCP("surveyHelper", host=config.MCP_HOST, port=config.MCP_PORT, lifespan=_lifespan)
 
 
 @mcp.tool()
