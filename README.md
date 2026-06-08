@@ -27,12 +27,18 @@ surveyhelper/
 ```
 
 ### The instant card (Phase 0-1, no LLM)
-- **Step 0** resolve id → canonical paper (arXiv + S2 merged)
+- **Step 0** resolve id → canonical paper (arXiv-only on the sync path → ~1-2s)
 - **Step 1** purpose/pain point — ladder: S2 `tldr` → abstract first sentences → none
 - **Step 3** backward references → citation-graph edges
 - **Step 7** code — GitHub URL in abstract → verify repo
 
-Deep grounded steps (1-refine/2/4/5/6 via PaperQA2) are enqueued for the worker — Phase 2.
+The sync card never blocks on S2's throttled pool. A background **`enrich`** job then
+fills the S2 `tldr` (upgrading step 1) and references (step 3), deferring with capped
+exponential backoff if S2 is throttled (`research_jobs.run_after`/`attempts`). Deep
+grounded steps (2/4/5/6 via PaperQA2) are Phase 2.
+
+### MCP tools
+`survey` · `get_paper` · `get_graph` · `job_status` · `pending_notifications`
 
 ## Run
 
@@ -47,9 +53,12 @@ uv sync
 # 3. config
 cp .env.example .env   # Phase 0-1 needs no keys (GitHub token optional)
 
-# 4. run
+# 4. run (dev)
 make mcp           # MCP server (streamable-http on :8765)
 make worker        # background worker (separate terminal)
+
+# 4b. run (always-on, recommended)
+bash deploy/install-services.sh   # launchd services for MCP server + worker
 
 # 5. test
 make test
