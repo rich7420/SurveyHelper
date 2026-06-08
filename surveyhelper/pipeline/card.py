@@ -55,7 +55,7 @@ def _status_for_step1(source: str) -> str:
 
 
 async def survey(identifier: str, *, references_limit: int = _DEFAULT_REF_LIMIT,
-                 enqueue_deep: bool = True) -> SurveyResult:
+                 enqueue_deep: bool = False) -> SurveyResult:
     """Build (or return cached) instant card for a paper identifier."""
     ref = parse_identifier(identifier)
 

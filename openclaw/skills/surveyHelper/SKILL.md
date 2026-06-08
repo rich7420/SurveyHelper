@@ -28,14 +28,19 @@ Extract an identifier from the message and pass it as `identifier`:
 `survey` returns one of:
 - `status: "card"` → a `card` with `title`, `summary` (purpose/pain point),
   `references_count`, `code`, and `step_status`. **Show the card immediately.**
-  If `deep_analysis_status` is `"queued"`, tell the user deeper analysis is running
-  and will be ready on a later check.
+  The card comes back in ~1-2s. `summary` may start as an abstract snippet
+  (`step1_source: "abstract_extractive"`) and `references_count` may be 0 — the
+  background worker then enriches it with the S2 `tldr` and references. So if
+  `step_status` has `"1"` or `"3"` as `"partial"`, tell the user the richer summary
+  and references are **loading**, and they can re-check with `get_paper`/`get_graph`
+  shortly.
 - `status: "candidates"` → list the candidates (title + year) for one-line disambiguation.
 - `status: "not_found"` → say you couldn't resolve it; ask for an arXiv id / DOI.
 
 ## Other tools
-- `get_paper(paper_id)` — re-show a stored card.
-- `job_status(job_id)` — check a background analysis job.
+- `get_paper(paper_id)` — re-show a stored card (use to pick up enriched tldr/references).
+- `get_graph(paper_id)` — the paper plus its backward references (most-influential first).
+- `job_status(job_id)` — check a background job.
 - `pending_notifications()` — used by the heartbeat (see HEARTBEAT.md), not usually by hand.
 
 ## Notes

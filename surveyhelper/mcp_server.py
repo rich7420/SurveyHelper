@@ -45,6 +45,29 @@ async def get_paper(paper_id: int) -> dict[str, Any]:
 
 
 @mcp.tool()
+async def get_graph(paper_id: int) -> dict[str, Any]:
+    """Return a paper and its backward references — the citation neighborhood.
+
+    References are ordered most-influential first. (Depth-2 graph expansion is a
+    later phase; this returns the direct reference set built by the card/enrich.)
+    """
+    p = await papers.get(paper_id)
+    if p is None:
+        return {"status": "not_found", "paper_id": paper_id}
+    ref_rows = await papers.references_of(paper_id)
+    refs = [{"paper_id": r["id"], "title": r["title"], "year": r["year"],
+             "arxiv_id": r["arxiv_id"], "is_influential": r["is_influential"]}
+            for r in ref_rows]
+    return {
+        "status": "graph",
+        "root": {"paper_id": p["id"], "title": p["title"], "year": p["year"],
+                 "arxiv_id": p["arxiv_id"]},
+        "references": refs,
+        "references_count": len(refs),
+    }
+
+
+@mcp.tool()
 async def job_status(job_id: int) -> dict[str, Any]:
     """Status of a background job (analyze/expand/synthesize/proactive_scan)."""
     j = await jobs_repo.get(job_id)
