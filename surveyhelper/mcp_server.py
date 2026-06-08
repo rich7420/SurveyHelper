@@ -15,7 +15,7 @@ from mcp.server.fastmcp import FastMCP
 from . import config, http
 from .db import close_pool
 from .db import jobs as jobs_repo
-from .db import notifications, papers, personal
+from .db import notifications, papers, personal, usage
 from .logging_setup import get
 from .pipeline.card import _assemble, survey as _survey
 
@@ -149,6 +149,14 @@ async def my_papers(state: str | None = None) -> dict[str, Any]:
     return {"count": len(rows),
             "papers": [{"paper_id": r["id"], "title": r["title"], "arxiv_id": r["arxiv_id"],
                         "state": r["state"], "why": r["why"]} for r in rows]}
+
+
+@mcp.tool()
+async def cost_summary() -> dict[str, Any]:
+    """LLM spend so far: total + today, vs the daily budget."""
+    t = await usage.totals()
+    return {**t, "today_usd": round(await usage.today_cost(), 4),
+            "daily_budget_usd": config.DAILY_BUDGET_USD}
 
 
 @mcp.tool()

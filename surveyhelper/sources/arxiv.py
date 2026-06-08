@@ -86,18 +86,28 @@ _WS = re.compile(r"\s+")
 
 
 async def fetch_fulltext(arxiv_id: str, *, max_chars: int = 120_000) -> Optional[str]:
-    """Plain-text body from the arXiv HTML rendering, for whole-paper LLM analysis.
-
-    Returns None when no HTML rendering exists (older papers). Crude tag-strip — good
-    enough to put the paper in Claude's context. Truncated to `max_chars`.
-    """
+    """Plain-text paper body for whole-paper LLM analysis: arXiv HTML, else the PDF
+    (pymupdf) for pre-HTML papers, else None. Truncated to `max_chars`."""
     resp = await http.request("arxiv", "GET", f"https://arxiv.org/html/{arxiv_id}")
+    if resp.status_code == 200:
+        html = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", resp.text, flags=re.S | re.I)
+        text = _WS.sub(" ", _TAG.sub(" ", html)).strip()
+        if text:
+            return text[:max_chars]
+    return await _pdf_fulltext(arxiv_id, max_chars)
+
+
+async def _pdf_fulltext(arxiv_id: str, max_chars: int) -> Optional[str]:
+    resp = await http.request("arxiv", "GET", f"https://arxiv.org/pdf/{arxiv_id}")
     if resp.status_code != 200:
         return None
-    html = resp.text
-    html = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S | re.I)
-    text = _WS.sub(" ", _TAG.sub(" ", html)).strip()
-    return text[:max_chars] if text else None
+    import fitz  # pymupdf
+    try:
+        with fitz.open(stream=resp.content, filetype="pdf") as doc:
+            text = _WS.sub(" ", " ".join(page.get_text() for page in doc)).strip()
+    except Exception:
+        return None
+    return text[:max_chars] or None
 
 
 async def fetch_html_references(arxiv_id: str) -> list[str]:

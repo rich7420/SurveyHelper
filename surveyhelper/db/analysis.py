@@ -38,18 +38,20 @@ async def save(paper_id: int, pipeline_version: str, *, step_status: dict,
 
 async def save_deep(paper_id: int, pipeline_version: str, *, architecture: dict | None,
                     method: dict | None, results: dict | None, limitations: dict | None,
-                    step_status_updates: dict, model_used: str) -> bool:
+                    step_status_updates: dict, model_used: str,
+                    provenance_updates: dict | None = None) -> bool:
     """Add the deep grounded fields (steps 2/4/5/6) to an existing analysis row,
-    merging step_status. Returns False if no row to update (card must exist first)."""
+    merging step_status + provenance. Returns False if no row (card must exist first)."""
     pool = await get_pool()
     tag = await pool.execute(
         """UPDATE paper_analysis SET
                architecture = $3, method = $4, results = $5, limitations = $6,
                step_status = step_status || $7::jsonb,
+               provenance = coalesce(provenance,'{}'::jsonb) || $9::jsonb,
                model_used = $8, analyzed_at = now()
            WHERE paper_id = $1 AND pipeline_version = $2""",
         paper_id, pipeline_version, architecture, method, results, limitations,
-        step_status_updates, model_used,
+        step_status_updates, model_used, provenance_updates or {},
     )
     return tag.endswith("1")
 

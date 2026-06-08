@@ -46,6 +46,16 @@ async def claim_next() -> Optional[asyncpg.Record]:
             return row
 
 
+async def reclaim_stale(timeout_minutes: int = 15) -> int:
+    """Return jobs stuck 'running' (worker crashed mid-job) to 'pending' (plan §17)."""
+    pool = await get_pool()
+    tag = await pool.execute(
+        """UPDATE research_jobs SET status='pending', updated_at=now()
+           WHERE status='running' AND updated_at < now() - make_interval(mins => $1)""",
+        timeout_minutes)
+    return int(tag.split()[-1]) if tag.startswith("UPDATE") else 0
+
+
 async def set_status(job_id: int, status: str) -> None:
     pool = await get_pool()
     await pool.execute(

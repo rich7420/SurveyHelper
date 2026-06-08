@@ -58,13 +58,13 @@ where the product value still lives.
 |---|---|---|
 | 0 | Source + rate layer (arXiv/S2/GitHub behind one limiter + DB cache) | ✅ done |
 | 1 | Cheap pipeline (steps 0/1/3/7) + canonical dedup + async enrich | ✅ done |
-| 2 | **Grounded deep steps** (1-refine/2/4/5/6 via PaperQA2) + full-text ladder | ⬜ next |
+| 2 | Grounded deep steps (2/4/5/6) via `claude -p` whole-paper context + PDF/HTML full text | ✅ done (hardened) |
 | 3 | MCP + OpenClaw (sync card fast, deep async) | ✅ done (card path) |
 | 4 | **`expand`** — depth-2 BFS, dedup, budget, resumable frontier | ✅ done (no-LLM) |
 | 5 | **`synthesize`** — lineage / open-problems / contradictions / map | ⬜ next (needs LLM) |
 | 6 | Personal layer — `paper_user_state`, corrections overlay, `interests`, personal dedup | ✅ done (embeddings pending) |
 | 7 | Proactivity — daily `proactive_scan` + digest notifications | ✅ done (keyword; embedding relevance pending) |
-| 8 | Eval — golden set + regression run + cost dashboard | ⬜ |
+| 8 | Eval — golden set + regression run + cost dashboard | ◻ partial (faithfulness self-check + `usage_log`/`cost_summary`; golden set TODO) |
 
 ## Open decisions (settle before the dependent phase)
 

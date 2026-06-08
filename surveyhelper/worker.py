@@ -120,7 +120,13 @@ async def _run_one(job: asyncpg.Record) -> None:
 
 async def run(stop: asyncio.Event) -> None:
     log.info("worker started")
+    cycle = 0
     while not stop.is_set():
+        cycle += 1
+        if cycle % 30 == 1:                       # ~every minute, recover crashed jobs
+            reclaimed = await jobs.reclaim_stale()
+            if reclaimed:
+                log.warning("reclaimed %d stale running job(s)", reclaimed)
         job = await jobs.claim_next()
         if job is None:
             try:

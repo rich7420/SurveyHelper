@@ -17,6 +17,12 @@ async def add(*, job_id: int | None, source: str, calls: int, tokens: int,
     )
 
 
+async def today_cost() -> float:
+    pool = await get_pool()
+    return float(await pool.fetchval(
+        "SELECT coalesce(sum(cost_usd),0) FROM usage_log WHERE at::date = now()::date"))
+
+
 async def totals() -> dict[str, Any]:
     pool = await get_pool()
     row = await pool.fetchrow(

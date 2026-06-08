@@ -10,6 +10,7 @@ dependencies = [
     "asyncpg>=0.29",
     "pydantic>=2.6",
     "feedparser>=6.0",          # arXiv Atom API
+    "pymupdf>=1.24",            # PDF full-text for pre-HTML papers
 ]
 
 [project.scripts]
