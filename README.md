@@ -67,6 +67,15 @@ make test
 
 ## OpenClaw integration
 
-Register the MCP server (HTTP) in `~/.openclaw/openclaw.json`, then add the skill + heartbeat
-hook from [`openclaw/`](openclaw/). A Dockerized OpenClaw reaches the host MCP server via
-`http://host.docker.internal:8765/mcp`.
+One command — it auto-detects the OpenClaw container, its CLI version (`mcp add` vs `mcp set`),
+and its workspace, then registers the MCP server and installs the skill + heartbeat hook
+(idempotent, never clobbers an existing `HEARTBEAT.md`):
+
+```bash
+bash openclaw/install.sh           # install
+bash openclaw/install.sh --check   # diagnose only
+```
+
+A Dockerized OpenClaw reaches the host MCP server via `http://host.docker.internal:8765/mcp`.
+The skill ([`openclaw/skills/surveyHelper/SKILL.md`](openclaw/skills/surveyHelper/SKILL.md)) tells
+the agent *when* to call `survey`; the heartbeat hook surfaces finished background work.
