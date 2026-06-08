@@ -76,6 +76,13 @@ async def _handle_enrich(job: asyncpg.Record) -> None:
         log.info("enrich job %s not completed: %s", job["id"], res.get("reason"))
 
 
+async def _handle_expand(job: asyncpg.Record) -> None:
+    """Depth-bounded BFS over the citation graph (Phase 4)."""
+    from .pipeline.expand import run_expand
+    res = await run_expand(job)
+    log.info("expand job %s: %s", job["id"], res)
+
+
 async def _handle_unimplemented(job: asyncpg.Record) -> None:
     log.info("job %s type=%s not implemented yet", job["id"], job["type"])
     await notifications.add("unimplemented", {"job_id": job["id"], "type": job["type"]},
@@ -84,8 +91,8 @@ async def _handle_unimplemented(job: asyncpg.Record) -> None:
 
 HANDLERS: dict[str, Handler] = {
     "enrich": _handle_enrich,             # S2 tldr + references (Phase 0-1, async)
+    "expand": _handle_expand,             # depth-2 BFS over the graph (Phase 4)
     "analyze": _handle_analyze,           # deep grounded steps (Phase 2)
-    # "expand": _handle_expand,           # Phase 4
     # "synthesize": _handle_synthesize,   # Phase 5
     # "proactive_scan": _handle_scan,     # Phase 7
 }

@@ -135,6 +135,13 @@ async def add_citation(src: int, dst: int, edge_type: str = "reference",
     )
 
 
+async def count_references(paper_id: int) -> int:
+    pool = await get_pool()
+    return await pool.fetchval(
+        "SELECT count(*) FROM citations WHERE src = $1 AND edge_type = 'reference'", paper_id
+    )
+
+
 async def references_of(paper_id: int) -> list[asyncpg.Record]:
     pool = await get_pool()
     return await pool.fetch(

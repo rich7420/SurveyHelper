@@ -35,14 +35,18 @@ mcp = FastMCP("surveyHelper", host=config.MCP_HOST, port=config.MCP_PORT, lifesp
 
 
 @mcp.tool()
-async def survey(identifier: str, references_limit: int = 50) -> dict[str, Any]:
+async def survey(identifier: str, depth: int = 1, references_limit: int = 50) -> dict[str, Any]:
     """Survey a paper: return an instant card (purpose, references, code) in seconds.
 
     `identifier` may be an arXiv id (e.g. "2310.01889" or "arXiv:2310.01889"), a DOI,
     a Semantic Scholar id, a paper URL, or a paper title. A fuzzy title returns
-    candidates to disambiguate. Deep grounded analysis is queued and fills in later.
+    candidates to disambiguate.
+
+    `depth=2` also kicks off a background **graph expansion** (BFS over the citation
+    graph) — the card returns immediately and the deeper graph fills in; check progress
+    with `job_status` and view it with `get_graph`.
     """
-    res = await _survey(identifier, references_limit=references_limit)
+    res = await _survey(identifier, depth=depth, references_limit=references_limit)
     return res.model_dump()
 
 

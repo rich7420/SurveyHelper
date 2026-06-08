@@ -55,8 +55,14 @@ def _status_for_step1(source: str) -> str:
 
 
 async def survey(identifier: str, *, references_limit: int = _DEFAULT_REF_LIMIT,
-                 enqueue_deep: bool = False) -> SurveyResult:
-    """Build (or return cached) instant card for a paper identifier."""
+                 depth: int = 1, enqueue_deep: bool = False,
+                 enqueue_enrich: bool = True) -> SurveyResult:
+    """Build (or return cached) instant card for a paper identifier.
+
+    `depth >= 2` enqueues an `expand` job (background BFS over the citation graph).
+    `enqueue_enrich=False` builds the card without queuing S2 enrichment (used by the
+    expander, which enriches synchronously).
+    """
     ref = parse_identifier(identifier)
 
     # DB-as-cache fast path for concrete ids (no network if we already have the card).
@@ -66,7 +72,11 @@ async def survey(identifier: str, *, references_limit: int = _DEFAULT_REF_LIMIT,
         if cached:
             row = await analysis.get(cached["id"], config.PIPELINE_VERSION)
             if row:
-                card = await _assemble(cached["id"], cached=True)
+                if depth >= 2:
+                    await jobs.enqueue("expand", root_paper_id=cached["id"],
+                                       requested_depth=depth, triggered_by=f"survey:{identifier}")
+                card = await _assemble(cached["id"], cached=True,
+                                       deep_status="expanding" if depth >= 2 else "not_requested")
                 return SurveyResult(status="card", card=card)
 
     # Step 0 — resolve. arXiv ids skip S2 here so the card is instant (~2s); S2
@@ -117,11 +127,15 @@ async def survey(identifier: str, *, references_limit: int = _DEFAULT_REF_LIMIT,
 
     # Background enrichment: S2 tldr + references, off the sync critical path.
     # Skip it only if S2 already supplied both (e.g. a DOI/S2 survey that resolved via S2).
-    if not (meta.tldr and refs):
+    if enqueue_enrich and not (meta.tldr and refs):
         await jobs.enqueue("enrich", root_paper_id=paper_id,
                            triggered_by=f"survey:{identifier}")
 
     deep_status = "not_requested"
+    if depth >= 2:
+        await jobs.enqueue("expand", root_paper_id=paper_id, requested_depth=depth,
+                           triggered_by=f"survey:{identifier}")
+        deep_status = "expanding"
     if enqueue_deep:
         await jobs.enqueue("analyze", root_paper_id=paper_id, requested_depth=0,
                            triggered_by=f"survey:{identifier}")
