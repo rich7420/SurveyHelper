@@ -61,7 +61,7 @@ where the product value still lives.
 | 2 | Grounded deep steps (2/4/5/6) via `claude -p` whole-paper context + PDF/HTML full text | ✅ done (hardened) |
 | 3 | MCP + OpenClaw (sync card fast, deep async) | ✅ done (card path) |
 | 4 | **`expand`** — depth-2 BFS, dedup, budget, resumable frontier | ✅ done (no-LLM) |
-| 5 | **`synthesize`** — lineage / open-problems / contradictions / map | ⬜ next (needs LLM) |
+| 5 | `synthesize` — lineage / open-problems / contradictions / landscape map | ✅ done |
 | 6 | Personal layer — `paper_user_state`, corrections overlay, `interests`, personal dedup | ✅ done (embeddings pending) |
 | 7 | Proactivity — daily `proactive_scan` + digest notifications | ✅ done (keyword; embedding relevance pending) |
 | 8 | Eval — golden set + regression run + cost dashboard | ◻ partial (faithfulness self-check + `usage_log`/`cost_summary`; golden set TODO) |

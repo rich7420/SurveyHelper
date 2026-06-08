@@ -15,7 +15,7 @@ from mcp.server.fastmcp import FastMCP
 from . import config, http
 from .db import close_pool
 from .db import jobs as jobs_repo
-from .db import notifications, papers, personal, usage
+from .db import notifications, papers, personal, syntheses, usage
 from .logging_setup import get
 from .pipeline.card import _assemble, survey as _survey
 
@@ -149,6 +149,29 @@ async def my_papers(state: str | None = None) -> dict[str, Any]:
     return {"count": len(rows),
             "papers": [{"paper_id": r["id"], "title": r["title"], "arxiv_id": r["arxiv_id"],
                         "state": r["state"], "why": r["why"]} for r in rows]}
+
+
+@mcp.tool()
+async def synthesize_graph(paper_id: int) -> dict[str, Any]:
+    """Queue a graph synthesis for a paper's analyzed sub-graph — lineage, open problems,
+    contradictions, and a landscape map across the paper + its references. Background;
+    result via get_synthesis + a synthesis_ready notification."""
+    if await papers.get(paper_id) is None:
+        return {"status": "not_found", "paper_id": paper_id}
+    jid = await jobs_repo.enqueue("synthesize", root_paper_id=paper_id, triggered_by="manual")
+    return {"status": "queued", "job_id": jid, "paper_id": paper_id}
+
+
+@mcp.tool()
+async def get_synthesis(paper_id: int) -> dict[str, Any]:
+    """Return the latest graph synthesis for a paper (lineage/open-problems/contradictions/map)."""
+    s = await syntheses.get_latest(str(paper_id))
+    if s is None:
+        return {"status": "none", "paper_id": paper_id}
+    return {"status": "synthesis", "paper_id": paper_id,
+            "lineage": s["lineage"], "open_problems": s["open_problems"],
+            "contradictions": s["contradictions"], "landscape": s["map"],
+            "created_at": s["created_at"].isoformat()}
 
 
 @mcp.tool()

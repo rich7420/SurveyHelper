@@ -164,3 +164,16 @@ async def test_proactive_dedups_known_papers(monkeypatch):
     assert res["new"] == 1          # existing deduped; only the brand-new surfaced
     await pool.execute("DELETE FROM interests WHERE label='test-interest-xyz'")
     await _cleanup(pool, "7777.00200", "7777.00201")
+
+
+@pytest.mark.asyncio
+async def test_synthesize_needs_enough_analyzed_papers():
+    """Synthesis refuses (no LLM call) when the sub-graph lacks analyzed content."""
+    pool = await _db()
+    await _cleanup(pool, "7777.00300")
+    pid = await papers.upsert(PaperMeta(arxiv_id="7777.00300", title="Lonely"))
+    await analysis.save(pid, config.PIPELINE_VERSION, step_status={"0": "ok"}, purpose="x")
+    from surveyhelper.pipeline.synthesize import synthesize
+    res = await synthesize(pid)            # only the root has content -> insufficient
+    assert res["synthesized"] is False and res["reason"] == "insufficient_analyzed_papers"
+    await _cleanup(pool, "7777.00300")

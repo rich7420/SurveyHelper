@@ -80,6 +80,13 @@ async def _handle_expand(job: asyncpg.Record) -> None:
     log.info("expand job %s: %s", job["id"], res)
 
 
+async def _handle_synthesize(job: asyncpg.Record) -> None:
+    """Reduce a root's analyzed sub-graph into lineage/open-problems/contradictions (Phase 5)."""
+    from .pipeline.synthesize import synthesize
+    res = await synthesize(job["root_paper_id"], job_id=job["id"])
+    log.info("synthesize job %s: %s", job["id"], res)
+
+
 async def _handle_proactive_scan(job: asyncpg.Record) -> None:
     """Surface new papers on followed interests (Phase 7)."""
     from .pipeline.proactive import run_scan
@@ -96,9 +103,9 @@ async def _handle_unimplemented(job: asyncpg.Record) -> None:
 HANDLERS: dict[str, Handler] = {
     "enrich": _handle_enrich,             # S2 tldr + references (Phase 0-1, async)
     "expand": _handle_expand,             # depth-2 BFS over the graph (Phase 4)
+    "synthesize": _handle_synthesize,     # graph-level reduce (Phase 5)
     "proactive_scan": _handle_proactive_scan,   # surface new papers on interests (Phase 7)
     "analyze": _handle_analyze,           # deep grounded steps (Phase 2)
-    # "synthesize": _handle_synthesize,   # Phase 5
 }
 
 
