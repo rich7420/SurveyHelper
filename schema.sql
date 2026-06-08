@@ -166,3 +166,10 @@ CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value JSONB
 );
+
+-- cross-process rate limiter (plan §9): one global per-source bucket shared by the
+-- MCP server (foreground) and the worker (background), so they never collide on 429s.
+CREATE TABLE IF NOT EXISTS rate_limit (
+    source    TEXT PRIMARY KEY,
+    next_slot TIMESTAMPTZ DEFAULT now()
+);

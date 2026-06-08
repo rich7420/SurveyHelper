@@ -1,42 +1,43 @@
-"""Rate-limiter pacing — pure logic, no network."""
+"""Cross-process (DB-backed) rate limiter. Integration: needs the Postgres up."""
 
-import asyncio
 import time
 
 import pytest
 
-from surveyhelper.ratelimit import RateLimiter
+from surveyhelper.db import get_pool
+from surveyhelper.ratelimit import INTERVALS, RateLimiter
+
+
+async def _require_db():
+    try:
+        return await get_pool()
+    except Exception as exc:  # pragma: no cover - env without DB
+        pytest.skip(f"DB unavailable: {exc}")
+
+
+def test_intervals_configured():
+    assert INTERVALS["arxiv"] == 4.0
+    assert {"s2", "github", "crossref"} <= set(INTERVALS)
 
 
 @pytest.mark.asyncio
-async def test_paces_calls_min_interval():
-    rl = RateLimiter()
-    rl._sources["t"] = type(rl._sources["s2"])(min_interval=0.1)
+async def test_db_limiter_paces_across_calls():
+    pool = await _require_db()
+    await pool.execute("DELETE FROM rate_limit WHERE source='test_pace'")
+    rl = RateLimiter(intervals={"test_pace": 0.1})
     t0 = time.monotonic()
     for _ in range(3):
-        await rl.acquire("t")
+        await rl.acquire("test_pace")
     elapsed = time.monotonic() - t0
-    # 3 calls at 0.1s spacing -> >= ~0.2s (first is free, then 2 waits)
+    # first call fires immediately, then two ~0.1s waits
     assert elapsed >= 0.18
+    await pool.execute("DELETE FROM rate_limit WHERE source='test_pace'")
 
 
 @pytest.mark.asyncio
-async def test_unknown_source_no_pacing():
+async def test_unknown_source_not_paced():
+    await _require_db()
     rl = RateLimiter()
     t0 = time.monotonic()
     await rl.acquire("does-not-exist")
     assert time.monotonic() - t0 < 0.05
-
-
-@pytest.mark.asyncio
-async def test_arxiv_single_flight_serializes():
-    rl = RateLimiter()
-    rl._sources["arxiv"].min_interval = 0.1
-    order: list[str] = []
-
-    async def call(tag: str):
-        await rl.acquire("arxiv")
-        order.append(tag)
-
-    await asyncio.gather(call("a"), call("b"), call("c"))
-    assert sorted(order) == ["a", "b", "c"]
