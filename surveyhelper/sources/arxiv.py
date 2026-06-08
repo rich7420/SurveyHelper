@@ -81,6 +81,25 @@ async def search_recent(query: str, *, max_results: int = 20, since=None) -> lis
     return out
 
 
+_TAG = re.compile(r"<[^>]+>")
+_WS = re.compile(r"\s+")
+
+
+async def fetch_fulltext(arxiv_id: str, *, max_chars: int = 120_000) -> Optional[str]:
+    """Plain-text body from the arXiv HTML rendering, for whole-paper LLM analysis.
+
+    Returns None when no HTML rendering exists (older papers). Crude tag-strip — good
+    enough to put the paper in Claude's context. Truncated to `max_chars`.
+    """
+    resp = await http.request("arxiv", "GET", f"https://arxiv.org/html/{arxiv_id}")
+    if resp.status_code != 200:
+        return None
+    html = resp.text
+    html = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S | re.I)
+    text = _WS.sub(" ", _TAG.sub(" ", html)).strip()
+    return text[:max_chars] if text else None
+
+
 async def fetch_html_references(arxiv_id: str) -> list[str]:
     """Keyless reference fallback (DECISIONS: cut the hard S2 dependency).
 

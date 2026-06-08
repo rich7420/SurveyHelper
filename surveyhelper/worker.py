@@ -40,13 +40,10 @@ def _backoff_seconds(attempts: int) -> float:
 
 
 async def _handle_analyze(job: asyncpg.Record) -> None:
-    """Deep grounded steps (1-refine/2/4/5/6) via PaperQA2 — Phase 2.
-
-    Phase 0-1: the instant card is already built synchronously by the MCP server,
-    so there is nothing to do here yet. Mark done without noise.
-    """
-    log.info("analyze job %s for paper %s — deep steps are Phase 2 (no-op for now)",
-             job["id"], job["root_paper_id"])
+    """Deep grounded steps (2/4/5/6) via the claude -p adapter (Phase 2)."""
+    from .pipeline.analyze import analyze
+    res = await analyze(job["root_paper_id"], job_id=job["id"])
+    log.info("analyze job %s: %s", job["id"], res)
 
 
 async def _handle_enrich(job: asyncpg.Record) -> None:

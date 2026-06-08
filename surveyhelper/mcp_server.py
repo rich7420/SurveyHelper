@@ -152,6 +152,17 @@ async def my_papers(state: str | None = None) -> dict[str, Any]:
 
 
 @mcp.tool()
+async def analyze_paper(paper_id: int) -> dict[str, Any]:
+    """Queue deep grounded analysis (background/architecture, method, results, limitations).
+    Runs in the background (~minutes via the LLM); results land on the card + a deep_ready
+    notification. The card must already exist (survey first)."""
+    if await papers.get(paper_id) is None:
+        return {"status": "not_found", "paper_id": paper_id}
+    jid = await jobs_repo.enqueue("analyze", root_paper_id=paper_id, triggered_by="manual")
+    return {"status": "queued", "job_id": jid, "paper_id": paper_id}
+
+
+@mcp.tool()
 async def run_proactive_scan() -> dict[str, Any]:
     """Kick off a background scan for new arXiv papers on your followed interests.
     Results arrive as a digest notification (surfaced on the next heartbeat)."""
