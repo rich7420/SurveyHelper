@@ -35,6 +35,21 @@ async def _handle_analyze(job: asyncpg.Record) -> None:
              job["id"], job["root_paper_id"])
 
 
+async def _handle_enrich(job: asyncpg.Record) -> None:
+    """Fill the card's S2 tldr + references in the background (plan §5)."""
+    from .pipeline.enrich import enrich
+    res = await enrich(job["root_paper_id"])
+    if res.get("enriched"):
+        await notifications.add(
+            "enriched",
+            {"paper_id": job["root_paper_id"], "title": res.get("title"),
+             "tldr": res.get("tldr"), "references": res.get("references")},
+            job_id=job["id"], digest_key=f"enrich:{job['root_paper_id']}",
+        )
+    else:
+        log.info("enrich job %s not completed: %s", job["id"], res.get("reason"))
+
+
 async def _handle_unimplemented(job: asyncpg.Record) -> None:
     log.info("job %s type=%s not implemented yet", job["id"], job["type"])
     await notifications.add("unimplemented", {"job_id": job["id"], "type": job["type"]},
@@ -42,7 +57,8 @@ async def _handle_unimplemented(job: asyncpg.Record) -> None:
 
 
 HANDLERS: dict[str, Handler] = {
-    "analyze": _handle_analyze,
+    "enrich": _handle_enrich,             # S2 tldr + references (Phase 0-1, async)
+    "analyze": _handle_analyze,           # deep grounded steps (Phase 2)
     # "expand": _handle_expand,           # Phase 4
     # "synthesize": _handle_synthesize,   # Phase 5
     # "proactive_scan": _handle_scan,     # Phase 7

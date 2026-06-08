@@ -69,8 +69,9 @@ async def survey(identifier: str, *, references_limit: int = _DEFAULT_REF_LIMIT,
                 card = await _assemble(cached["id"], cached=True)
                 return SurveyResult(status="card", card=card)
 
-    # Step 0 — resolve.
-    res = await resolve(ref)
+    # Step 0 — resolve. arXiv ids skip S2 here so the card is instant (~2s); S2
+    # tldr + references are filled by the background `enrich` job (plan §5).
+    res = await resolve(ref, use_s2=(ref.kind != "arxiv"))
     if res.candidates:
         return SurveyResult(status="candidates", candidates=res.candidates,
                             message="Ambiguous title — pick one to survey.")
@@ -113,6 +114,12 @@ async def survey(identifier: str, *, references_limit: int = _DEFAULT_REF_LIMIT,
         code=code.model_dump(), provenance={"step1_source": step1_source},
         model_used=None,
     )
+
+    # Background enrichment: S2 tldr + references, off the sync critical path.
+    # Skip it only if S2 already supplied both (e.g. a DOI/S2 survey that resolved via S2).
+    if not (meta.tldr and refs):
+        await jobs.enqueue("enrich", root_paper_id=paper_id,
+                           triggered_by=f"survey:{identifier}")
 
     deep_status = "not_requested"
     if enqueue_deep:

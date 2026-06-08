@@ -49,7 +49,14 @@ def _merge(a: PaperMeta | None, s: PaperMeta | None) -> PaperMeta | None:
     )
 
 
-async def resolve(ref: Ref) -> ResolveResult:
+async def resolve(ref: Ref, *, use_s2: bool = True) -> ResolveResult:
+    """Resolve an id to canonical metadata.
+
+    `use_s2=False` (the sync-card path for arXiv ids) skips S2 entirely so the card
+    never blocks on S2's throttled shared pool — S2 enrichment (tldr + references)
+    is done later by the background `enrich` job (plan §5). For DOI/S2 ids S2 is
+    required to resolve at all, so `use_s2` is forced on for those.
+    """
     if ref.kind == "title":
         try:
             return ResolveResult(candidates=await s2.search_title(ref.value))
@@ -57,13 +64,13 @@ async def resolve(ref: Ref) -> ResolveResult:
             log.warning("S2 title search unavailable (%s)", exc)
             return ResolveResult()
 
-    # S2 enriches (tldr, refs, cross-ids) but must not be load-bearing for arXiv ids:
-    # if S2 is throttled/down, an arXiv paper still resolves from arXiv alone (plan §4).
+    need_s2 = use_s2 or ref.kind in ("doi", "s2")
     s2_meta: PaperMeta | None = None
-    try:
-        s2_meta = await s2.fetch_paper(s2.s2_lookup_id(ref.kind, ref.value))
-    except httpx.HTTPError as exc:
-        log.warning("S2 unavailable for %s (%s) — degrading to arXiv-only", ref.value, exc)
+    if need_s2:
+        try:
+            s2_meta = await s2.fetch_paper(s2.s2_lookup_id(ref.kind, ref.value))
+        except httpx.HTTPError as exc:
+            log.warning("S2 unavailable for %s (%s) — degrading to arXiv-only", ref.value, exc)
 
     arxiv_id = ref.value if ref.kind == "arxiv" else (s2_meta.arxiv_id if s2_meta else None)
     arxiv_meta = await arxiv.fetch_metadata(arxiv_id) if arxiv_id else None
