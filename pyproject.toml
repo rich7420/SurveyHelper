@@ -1,0 +1,23 @@
+[project]
+name = "surveyhelper"
+version = "0.1.0"
+description = "Local research companion + OpenClaw plugin: per-paper analysis, citation-graph synthesis, personal memory"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.2.0",
+    "httpx>=0.27",
+    "asyncpg>=0.29",
+    "pydantic>=2.6",
+    "feedparser>=6.0",          # arXiv Atom API
+]
+
+[project.scripts]
+surveyhelper-mcp = "surveyhelper.mcp_server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["surveyhelper"]
