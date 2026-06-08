@@ -9,6 +9,7 @@ Running, monitoring, and troubleshooting the live system.
 | `surveyhelper-pg` | Postgres 16 + pgvector (storage + queue + limiter) | Docker container, port **5544** |
 | `com.surveyhelper.mcp` | MCP server (front door) | launchd, **:8765** streamable-http |
 | `com.surveyhelper.worker` | background worker | launchd, polls the job queue |
+| `com.surveyhelper.scan` | daily proactive scan | launchd, `StartCalendarInterval` 09:00 |
 | `generalops-openclaw` | OpenClaw gateway (Claude agent) | Docker, **:18789** |
 
 ### Start everything

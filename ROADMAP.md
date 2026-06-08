@@ -63,7 +63,7 @@ where the product value still lives.
 | 4 | **`expand`** — depth-2 BFS, dedup, budget, resumable frontier | ✅ done (no-LLM) |
 | 5 | **`synthesize`** — lineage / open-problems / contradictions / map | ⬜ next (needs LLM) |
 | 6 | Personal layer — `paper_user_state`, corrections overlay, `interests`, personal dedup | ✅ done (embeddings pending) |
-| 7 | Proactivity — daily `proactive_scan` + digest notifications | ⬜ (needs embeddings) |
+| 7 | Proactivity — daily `proactive_scan` + digest notifications | ✅ done (keyword; embedding relevance pending) |
 | 8 | Eval — golden set + regression run + cost dashboard | ⬜ |
 
 ## Open decisions (settle before the dependent phase)

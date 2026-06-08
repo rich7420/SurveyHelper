@@ -151,6 +151,14 @@ async def my_papers(state: str | None = None) -> dict[str, Any]:
                         "state": r["state"], "why": r["why"]} for r in rows]}
 
 
+@mcp.tool()
+async def run_proactive_scan() -> dict[str, Any]:
+    """Kick off a background scan for new arXiv papers on your followed interests.
+    Results arrive as a digest notification (surfaced on the next heartbeat)."""
+    jid = await jobs_repo.enqueue("proactive_scan", triggered_by="manual")
+    return {"status": "queued", "job_id": jid}
+
+
 def main() -> None:
     log.info("surveyHelper MCP server on http://%s:%s (streamable-http)",
              config.MCP_HOST, config.MCP_PORT)

@@ -83,6 +83,13 @@ async def _handle_expand(job: asyncpg.Record) -> None:
     log.info("expand job %s: %s", job["id"], res)
 
 
+async def _handle_proactive_scan(job: asyncpg.Record) -> None:
+    """Surface new papers on followed interests (Phase 7)."""
+    from .pipeline.proactive import run_scan
+    res = await run_scan()
+    log.info("proactive_scan job %s: %s", job["id"], res)
+
+
 async def _handle_unimplemented(job: asyncpg.Record) -> None:
     log.info("job %s type=%s not implemented yet", job["id"], job["type"])
     await notifications.add("unimplemented", {"job_id": job["id"], "type": job["type"]},
@@ -92,9 +99,9 @@ async def _handle_unimplemented(job: asyncpg.Record) -> None:
 HANDLERS: dict[str, Handler] = {
     "enrich": _handle_enrich,             # S2 tldr + references (Phase 0-1, async)
     "expand": _handle_expand,             # depth-2 BFS over the graph (Phase 4)
+    "proactive_scan": _handle_proactive_scan,   # surface new papers on interests (Phase 7)
     "analyze": _handle_analyze,           # deep grounded steps (Phase 2)
     # "synthesize": _handle_synthesize,   # Phase 5
-    # "proactive_scan": _handle_scan,     # Phase 7
 }
 
 

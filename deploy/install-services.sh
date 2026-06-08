@@ -6,7 +6,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LA="$HOME/Library/LaunchAgents"
 mkdir -p "$LA" "$HOME/SurveyHelper/logs"
 
-for svc in com.surveyhelper.mcp com.surveyhelper.worker; do
+for svc in com.surveyhelper.mcp com.surveyhelper.worker com.surveyhelper.scan; do
   cp "$HERE/launchd/$svc.plist" "$LA/$svc.plist"
   launchctl bootout "gui/$(id -u)/$svc" 2>/dev/null || true
   launchctl bootstrap "gui/$(id -u)" "$LA/$svc.plist"

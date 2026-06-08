@@ -16,19 +16,12 @@ _GH = re.compile(r"https?://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
 _ARXIV_REF = re.compile(r"(?:arxiv\.org/(?:abs|html|pdf)/|arxiv:)(\d{4}\.\d{4,5})", re.I)
 
 
-async def fetch_metadata(arxiv_id: str) -> Optional[PaperMeta]:
-    """Return normalized metadata for an arXiv id, or None if not found."""
-    text = await http.get_text("arxiv", _BASE, params={"id_list": arxiv_id, "max_results": "1"})
-    feed = feedparser.parse(text)
-    if not feed.entries:
-        return None
-    e = feed.entries[0]
+def _entry_to_meta(e, fallback_id: str = "") -> Optional[PaperMeta]:
     if getattr(e, "title", None) is None:
         return None
-
     eid = getattr(e, "id", "") or ""
     m = re.search(r"abs/([^v\s]+)(v\d+)?", eid)
-    canonical = m.group(1) if m else arxiv_id
+    canonical = m.group(1) if m else fallback_id
 
     pdf_url = None
     for link in getattr(e, "links", []):
@@ -44,20 +37,48 @@ async def fetch_metadata(arxiv_id: str) -> Optional[PaperMeta]:
         year = int(ym.group(1)) if ym else None
 
     summary = re.sub(r"\s+", " ", getattr(e, "summary", "") or "").strip()
-
     return PaperMeta(
         arxiv_id=canonical,
         title=re.sub(r"\s+", " ", e.title).strip(),
-        authors=authors,
-        year=year,
-        abstract=summary,
+        authors=authors, year=year, abstract=summary,
         doi=getattr(e, "arxiv_doi", None),
         url=f"https://arxiv.org/abs/{canonical}",
-        pdf_url=pdf_url,
-        venue="arXiv",
-        text_coverage="full",
+        pdf_url=pdf_url, venue="arXiv", text_coverage="full",
         github_urls=sorted(set(_GH.findall(summary))),
     )
+
+
+async def fetch_metadata(arxiv_id: str) -> Optional[PaperMeta]:
+    """Return normalized metadata for an arXiv id, or None if not found."""
+    text = await http.get_text("arxiv", _BASE, params={"id_list": arxiv_id, "max_results": "1"})
+    feed = feedparser.parse(text)
+    if not feed.entries:
+        return None
+    return _entry_to_meta(feed.entries[0], fallback_id=arxiv_id)
+
+
+async def search_recent(query: str, *, max_results: int = 20, since=None) -> list[PaperMeta]:
+    """Recent papers matching a free-text query, newest first (proactive scan, §8).
+
+    If `since` (a tz-aware datetime) is given, only papers submitted after it are kept.
+    """
+    import calendar
+    import datetime as _dt
+
+    text = await http.get_text("arxiv", _BASE, params={
+        "search_query": f"all:{query}", "sortBy": "submittedDate",
+        "sortOrder": "descending", "max_results": str(max_results)})
+    feed = feedparser.parse(text)
+    out: list[PaperMeta] = []
+    for e in feed.entries:
+        if since is not None and getattr(e, "published_parsed", None):
+            pub = _dt.datetime.fromtimestamp(calendar.timegm(e.published_parsed), _dt.timezone.utc)
+            if pub <= since:
+                continue
+        meta = _entry_to_meta(e)
+        if meta and meta.arxiv_id:
+            out.append(meta)
+    return out
 
 
 async def fetch_html_references(arxiv_id: str) -> list[str]:
