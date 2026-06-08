@@ -5,7 +5,8 @@ it, runs a structured analysis, walks the citation graph, synthesizes what the g
 remembers what *you* care about, and proactively surfaces new work — all stored locally.
 
 See [`plan.md`](plan.md) for the full design and [`DECISIONS.md`](DECISIONS.md) for the
-locked decisions (these supersede the plan where they disagree).
+locked decisions (these supersede the plan where they disagree). Operational detail lives in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 ## Architecture (plan §3)
 
