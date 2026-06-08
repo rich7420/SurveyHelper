@@ -7,25 +7,27 @@ rationale pointers.)
 
 ## Components (all local)
 
-```
-   you ── chat ──►  OpenClaw gateway (Docker)
-                        │  drives the Claude agent; loads SKILL.md + HEARTBEAT.md
-                        │  MCP (streamable-http)
-                        ▼
-        ┌───────────────────────────┐        ┌──────────────────────────┐
-        │ surveyHelper MCP server    │ enqueue│ surveyHelper worker       │
-        │ (front door, foreground)   ├───────►│ (paced execution, async)  │
-        │ survey/get_paper/get_graph │  jobs  │ enrich · analyze · …      │
-        └─────────────┬──────────────┘        └────────────┬─────────────┘
-                      │  both read/write                    │
-                      ▼                                     ▼
-        ┌──────────────────────────── Postgres + pgvector ────────────────────────────┐
-        │ papers · aliases · citations · paper_analysis · research_jobs · notifications │
-        │ rate_limit  ← ONE cross-process pacing bucket (plan §9)                       │
-        └──────────────────────────────────────────────────────────────────────────────┘
-                      │  both processes' API calls paced by the shared rate_limit
-                      ▼
-        arXiv · Semantic Scholar · GitHub   (only egress, behind the limiter + DB cache)
+```mermaid
+flowchart TD
+    you([you]) -->|chat| ocw["OpenClaw gateway (Docker)<br/>Claude agent · SKILL.md · HEARTBEAT.md"]
+    ocw -->|"MCP (streamable-http)"| mcp["surveyHelper MCP server<br/><i>front door, foreground</i><br/>survey · get_paper · get_graph"]
+    worker["surveyHelper worker<br/><i>paced execution, async</i><br/>enrich · expand · analyze"]
+
+    mcp -->|enqueue jobs| db
+    worker -->|"claim (FOR UPDATE SKIP LOCKED)"| db
+    mcp <-->|read / write| db
+    worker <-->|read / write| db
+    db[("Postgres + pgvector<br/>papers · aliases · citations · paper_analysis<br/>research_jobs · notifications · rate_limit")]
+
+    mcp -->|paced via rate_limit| apis
+    worker -->|paced via rate_limit| apis
+    apis["arXiv · Semantic Scholar · GitHub<br/><i>only egress — behind the limiter + DB cache</i>"]
+    db -. notifications .-> ocw
+
+    classDef proc fill:#e8f0fe,stroke:#4285f4;
+    classDef mem fill:#e6f4ea,stroke:#34a853;
+    classDef ext fill:#fef7e0,stroke:#fbbc04;
+    class mcp,worker proc; class db mem; class apis ext;
 ```
 
 Three processes, one division of labor (plan §3):
@@ -36,6 +38,29 @@ Three processes, one division of labor (plan §3):
 - **Postgres+pgvector** — the memory *and* the coordination plane (job queue + rate-limit bucket).
 
 ## The two workflows, side by side
+
+```mermaid
+sequenceDiagram
+    actor U as you
+    participant O as OpenClaw agent
+    participant M as MCP server
+    participant D as Postgres
+    participant W as worker
+    U->>O: "survey arXiv:2310.01889"
+    O->>M: survey(id)
+    M->>D: cache check / resolve (arXiv only)
+    M-->>O: instant card (~1–2s)
+    M->>D: enqueue enrich (+ expand if depth=2)
+    O-->>U: show card
+    rect rgb(232,244,234)
+    Note over D,W: background, concurrent
+    W->>D: claim job (SKIP LOCKED)
+    W->>D: S2 tldr + references<br/>(or arXiv-HTML fallback)
+    W->>D: notification "enriched"
+    end
+    O->>D: heartbeat → pending_notifications()
+    O-->>U: "deep analysis ready"
+```
 
 **Sync (foreground)** — `survey(id)` → ~1–2s:
 1. parse identifier → `Ref`
