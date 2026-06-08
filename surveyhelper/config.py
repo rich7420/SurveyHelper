@@ -41,5 +41,11 @@ MCP_PORT = int(os.environ.get("SURVEYHELPER_MCP_PORT", "8765"))
 
 PIPELINE_VERSION = os.environ.get("SURVEYHELPER_PIPELINE_VERSION", "card-v1")
 
+# LLM via the OpenClaw container's authenticated `claude -p` (Phase 2).
+LLM_CONTAINER = os.environ.get("SURVEYHELPER_OPENCLAW_CONTAINER", "generalops-openclaw")
+LLM_MODEL = os.environ.get("SURVEYHELPER_LLM_MODEL", "claude-sonnet-4-6")          # final answers
+LLM_SUMMARY_MODEL = os.environ.get("SURVEYHELPER_LLM_SUMMARY_MODEL", "claude-haiku-4-5")  # high-volume
+ANALYZE_PIPELINE_VERSION = os.environ.get("SURVEYHELPER_ANALYZE_VERSION", "analyze-v1")
+
 # Descriptive User-Agent for paper APIs (arXiv best practice).
 USER_AGENT = f"surveyHelper/0.1 (+{CONTACT_EMAIL})"
