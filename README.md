@@ -4,9 +4,9 @@ A local research companion + **OpenClaw plugin**. Mention a paper in chat and it
 it, runs a structured analysis, walks the citation graph, synthesizes what the graph means,
 remembers what *you* care about, and proactively surfaces new work — all stored locally.
 
-See [`plan.md`](plan.md) for the full design and [`DECISIONS.md`](DECISIONS.md) for the
-locked decisions (these supersede the plan where they disagree). Operational detail lives in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
+See [`ROADMAP.md`](ROADMAP.md) for status, direction, and the locked decisions. Operational
+detail lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 ## Architecture (plan §3)
 

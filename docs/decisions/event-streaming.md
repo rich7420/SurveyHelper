@@ -1,6 +1,7 @@
 # Decision: event streaming (Kafka/Redpanda) — not yet
 
-_Extends plan.md §18. Status: **decided — stay on the Postgres queue for now.**_
+_Extends the original design (plan §18, in git history). Status: **decided — stay on the
+Postgres queue for now.**_
 
 ## Question
 Do we need an event-streaming backbone (Kafka/Redpanda) for the async background work,

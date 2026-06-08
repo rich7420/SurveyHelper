@@ -1,7 +1,9 @@
 # surveyHelper — Architecture
 
-How the running system fits together. For the *why* and product vision see
-[`../plan.md`](../plan.md); for the locked decisions see [`../DECISIONS.md`](../DECISIONS.md).
+How the running system fits together. For status, direction, and the locked decisions see
+[`../ROADMAP.md`](../ROADMAP.md). (The original design draft and decision log are retired into
+git history; code comments still cite their `plan §N` / `DECISIONS §X` section numbers as
+rationale pointers.)
 
 ## Components (all local)
 
