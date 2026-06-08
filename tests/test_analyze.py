@@ -1,6 +1,27 @@
-"""Pure parse logic for the faithfulness self-check — no LLM, no DB."""
+"""Pure parse logic for analyze — faithfulness count + structured JSON extraction."""
 
-from surveyhelper.pipeline.analyze import _count_supported
+from surveyhelper.pipeline.analyze import _count_supported, _extract_json
+
+
+def test_extract_json_plain():
+    assert _extract_json('{"a": 1, "b": ["x"]}') == {"a": 1, "b": ["x"]}
+
+
+def test_extract_json_fenced():
+    assert _extract_json('```json\n{"core_idea": "x"}\n```') == {"core_idea": "x"}
+
+
+def test_extract_json_embedded_in_prose():
+    assert _extract_json('Sure: {"k": [1, 2]} — done.') == {"k": [1, 2]}
+
+
+def test_extract_json_invalid_returns_none():
+    assert _extract_json("no json at all") is None
+    assert _extract_json('{"broken": ') is None
+
+
+def test_extract_json_non_object_returns_none():
+    assert _extract_json("[1, 2, 3]") is None
 
 
 def test_all_supported():
