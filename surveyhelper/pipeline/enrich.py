@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
+
 from .. import config
 from ..db import analysis, papers
 from ..logging_setup import get
@@ -41,7 +43,11 @@ async def enrich(paper_id: int, *, references_limit: int = 50) -> dict[str, Any]
     if lookup is None:
         return {"enriched": False, "reason": "no_external_id"}
 
-    s2_meta = await s2.fetch_paper(lookup)   # worker is patient; retries handled in http layer
+    try:
+        s2_meta = await s2.fetch_paper(lookup)   # http layer already retried with backoff
+    except httpx.HTTPError as exc:
+        log.warning("S2 throttled/unavailable for paper %s (%s) — will retry later", paper_id, exc)
+        return {"enriched": False, "reason": "s2_unavailable", "retryable": True}
     if s2_meta is None:
         return {"enriched": False, "reason": "s2_no_result"}
 
@@ -63,19 +69,30 @@ async def enrich(paper_id: int, *, references_limit: int = 50) -> dict[str, Any]
         provenance["step1_source"] = "tldr"
         step_status["1"] = "ok"
 
-    # step 3: references -> graph edges
-    refs = await s2.fetch_references(s2_meta.s2_id, references_limit) if s2_meta.s2_id else []
+    # step 3: references -> graph edges (tolerate a throttle here too)
+    refs_failed = False
+    refs = []
+    if s2_meta.s2_id:
+        try:
+            refs = await s2.fetch_references(s2_meta.s2_id, references_limit)
+        except httpx.HTTPError as exc:
+            log.warning("references throttled for paper %s (%s)", paper_id, exc)
+            refs_failed = True
     for r in refs:
         stub_id = await papers.upsert_reference_stub(r)
         if stub_id:
             await papers.add_citation(paper_id, stub_id, "reference", r.is_influential)
-    step_status["3"] = "ok" if refs else "partial"
+    step_status["3"] = "ok" if refs else ("failed" if refs_failed else "partial")
 
+    # Persist whatever we got (tldr upgrade is saved even if refs still pending).
     await analysis.save(
         paper_id, config.PIPELINE_VERSION,
         step_status=step_status, purpose=purpose, code=code,
         provenance=provenance, model_used=(row["model_used"] if row else None),
     )
-    log.info("enriched paper %s: tldr=%s refs=%d", paper_id, bool(s2_meta.tldr), len(refs))
+    log.info("enriched paper %s: tldr=%s refs=%d (refs_failed=%s)",
+             paper_id, bool(s2_meta.tldr), len(refs), refs_failed)
+    # If references couldn't be fetched, ask for a later retry to complete the graph.
     return {"enriched": True, "tldr": bool(s2_meta.tldr), "references": len(refs),
-            "title": p["title"]}
+            "title": p["title"], "retryable": refs_failed,
+            "reason": "refs_throttled" if refs_failed else None}

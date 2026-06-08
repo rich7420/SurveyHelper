@@ -125,9 +125,12 @@ CREATE TABLE IF NOT EXISTS research_jobs (
     parent_job_id   BIGINT REFERENCES research_jobs(id) ON DELETE SET NULL,
     triggered_by    TEXT,
     budget          JSONB,
+    run_after       TIMESTAMPTZ DEFAULT now(),   -- deferred retry (e.g. S2 throttled)
+    attempts        INT DEFAULT 0,
     created_at      TIMESTAMPTZ DEFAULT now(),
     updated_at      TIMESTAMPTZ DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS research_jobs_claim_idx ON research_jobs (status, run_after);
 
 -- BFS frontier queue for resumable expand jobs (DECISIONS.md §D #6)
 CREATE TABLE IF NOT EXISTS job_papers (

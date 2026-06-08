@@ -26,14 +26,14 @@ async def enqueue(job_type: str, *, root_paper_id: int | None = None,
 
 
 async def claim_next() -> Optional[asyncpg.Record]:
-    """Atomically claim one pending job. Returns the row, or None if queue empty."""
+    """Atomically claim one due pending job (run_after <= now). None if none due."""
     pool = await get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
             row = await conn.fetchrow(
                 """SELECT * FROM research_jobs
-                   WHERE status = 'pending'
-                   ORDER BY created_at
+                   WHERE status = 'pending' AND run_after <= now()
+                   ORDER BY run_after
                    FOR UPDATE SKIP LOCKED
                    LIMIT 1"""
             )
@@ -50,6 +50,18 @@ async def set_status(job_id: int, status: str) -> None:
     pool = await get_pool()
     await pool.execute(
         "UPDATE research_jobs SET status=$2, updated_at=now() WHERE id=$1", job_id, status
+    )
+
+
+async def reschedule(job_id: int, delay_seconds: float) -> None:
+    """Defer a job for a later retry (e.g. an upstream API was throttled)."""
+    pool = await get_pool()
+    await pool.execute(
+        """UPDATE research_jobs
+           SET status='pending', attempts = attempts + 1,
+               run_after = now() + ($2 || ' seconds')::interval, updated_at=now()
+           WHERE id=$1""",
+        job_id, str(delay_seconds),
     )
 
 

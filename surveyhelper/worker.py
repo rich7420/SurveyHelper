@@ -22,7 +22,21 @@ log = get("worker")
 
 Handler = Callable[[asyncpg.Record], Awaitable[None]]
 
-IDLE_SLEEP = 2.0   # seconds between empty polls
+IDLE_SLEEP = 2.0          # seconds between empty polls
+MAX_ENRICH_ATTEMPTS = 8   # give up after this many deferred retries
+
+
+class RetryLater(Exception):
+    """Raise to defer a job (e.g. upstream API throttled) instead of failing it."""
+
+    def __init__(self, delay_seconds: float):
+        super().__init__(f"retry in {delay_seconds:.0f}s")
+        self.delay_seconds = delay_seconds
+
+
+def _backoff_seconds(attempts: int) -> float:
+    """Capped exponential backoff: 1, 2, 4, 8, 16, 30, 30 ... minutes."""
+    return min(30 * 60, 60 * (2 ** attempts))
 
 
 async def _handle_analyze(job: asyncpg.Record) -> None:
@@ -36,9 +50,21 @@ async def _handle_analyze(job: asyncpg.Record) -> None:
 
 
 async def _handle_enrich(job: asyncpg.Record) -> None:
-    """Fill the card's S2 tldr + references in the background (plan §5)."""
+    """Fill the card's S2 tldr + references in the background (plan §5).
+
+    If S2 is throttled, defer (RetryLater) with backoff rather than dead-lettering,
+    so enrichment completes once S2 is reachable.
+    """
     from .pipeline.enrich import enrich
     res = await enrich(job["root_paper_id"])
+
+    if res.get("retryable"):
+        attempts = job["attempts"] or 0
+        if attempts < MAX_ENRICH_ATTEMPTS:
+            raise RetryLater(_backoff_seconds(attempts))
+        log.warning("enrich job %s giving up after %d attempts (%s)",
+                    job["id"], attempts, res.get("reason"))
+
     if res.get("enriched"):
         await notifications.add(
             "enriched",
@@ -46,7 +72,7 @@ async def _handle_enrich(job: asyncpg.Record) -> None:
              "tldr": res.get("tldr"), "references": res.get("references")},
             job_id=job["id"], digest_key=f"enrich:{job['root_paper_id']}",
         )
-    else:
+    elif not res.get("retryable"):
         log.info("enrich job %s not completed: %s", job["id"], res.get("reason"))
 
 
@@ -70,6 +96,10 @@ async def _run_one(job: asyncpg.Record) -> None:
     try:
         await handler(job)
         await jobs.set_status(job["id"], "done")
+    except RetryLater as r:
+        await jobs.reschedule(job["id"], r.delay_seconds)
+        log.info("job %s deferred %.0fs (attempt %d)",
+                 job["id"], r.delay_seconds, (job["attempts"] or 0) + 1)
     except Exception as exc:  # dead-letter (plan §17)
         log.exception("job %s failed: %s", job["id"], exc)
         await jobs.set_status(job["id"], "failed")
