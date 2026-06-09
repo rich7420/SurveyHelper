@@ -12,6 +12,46 @@ has a concrete acceptance gate, in the spirit of the original phased plan.
 
 ---
 
+## OpenClaw integration architecture (how to wire it well)
+
+Self-review correction: v1 (and the first draft of this roadmap) treated OpenClaw as *just an
+MCP tool host*. That makes ambient awareness expensive — the agent would need a full model turn
+to *decide* to call `recognize` on every mention. OpenClaw actually offers a second surface that
+makes it cheap. surveyHelper should use **both**:
+
+1. **MCP tools — intentful actions.** `survey`, `analyze_paper`, `synthesize_graph`,
+   `mark_paper`, … The agent calls these when the user clearly intends something. *[exists]*
+
+2. **A hook plugin — ambient perception** (a small TypeScript OpenClaw plugin bridging to
+   surveyHelper over a lightweight HTTP endpoint). Verified present on the live gateway (2026.5.7):
+   - **`before_prompt_build`** — on each turn, cheaply scan the user message (+ recent session)
+     for paper mentions, call surveyHelper `GET /recognize`, and if a paper is in the graph return
+     **`appendContext`** injecting what we know ("'<title>' is in your graph — <tldr>; you marked
+     it read; 2 hops from your FlashAttention line"). The agent answers *ambiently aware* with **no
+     tool round-trip and no decision burden** — the model never even has to choose to look it up.
+   - enqueue a background `deepen` job (`POST /deepen`) when the recognized paper is shallow +
+     relevant, capturing `senderId`/`channel`/`threadId` for push-back.
+   - **`heartbeat_prompt_contribution`** — summarize pending syntheses/deepenings into heartbeats.
+   - **`agent_turn_prepare` queued injections** — the worker queues "deepening done for X" so it
+     surfaces naturally on the next turn.
+
+3. **Proactive push.** On deepen/synthesis completion the worker calls
+   `openclaw message send --channel <c> --target <t>` to surface results promptly, instead of
+   waiting for the 30-min/1-h heartbeat.
+
+**Why better than MCP-only:** the hook does cheap perception + context injection on every message;
+the model stays unburdened; the agent is ambiently aware. This is how "trigger cost matches action
+cost" is actually realized.
+
+**New components this needs (enabling work for Theme A):**
+- a surveyHelper **HTTP API** (`/recognize`, `/deepen`) for fast hook-speed graph lookups;
+- a small **TS hook plugin** under `openclaw/plugin/` (a node/tsc build step — new to the repo),
+  installed via `openclaw plugins install`;
+- a `priority` column on `research_jobs` (user-requested > ambient deepen);
+- capture + store the conversation target so the worker can push back.
+
+---
+
 ## Theme A — Graph-aware ambient conversation ⭐ (headline)
 
 *"The graph reacts to what you're discussing."* Today the system acts on explicit commands
@@ -25,11 +65,12 @@ deepen it in the background — the ambient pattern applied to the conversation,
    background deepen. *[NEW]*
 3. *Daily / idle* → proactive scan. *[exists]*
 
-- **A1. `recognize(mention)` — cheap, liberal.** Resolve a mention against the graph (alias →
-  title fuzzy → embedding nearest). Return, with **no LLM/API call**: do-we-have-it, the
-  1-liner, your state/notes, whether it's deep-analyzed, and its connections (below).
-  *Gate: mentioning an in-graph paper yields "I know this — <tldr>, you marked it read, it's
-  2 hops from your FlashAttention line" in <200 ms, no network.*
+- **A1. `recognize` via the `before_prompt_build` hook — cheap, liberal, zero tool round-trip.**
+  The hook (not the agent) scans each message, calls `GET /recognize` (alias → title fuzzy →
+  embedding nearest, **no LLM/API**), and injects graph context so the agent is *already* aware.
+  *Gate: mentioning an in-graph paper makes the agent reply "I know this — <tldr>, you marked it
+  read, it's 2 hops from your FlashAttention line" with no extra model turn and no network in the
+  recognize path (<200 ms).*
 - **A2. Deepen-on-mention (background).** If a recognized paper is in-graph but **shallow**
   (no deep analysis / thin neighborhood) **and** relevant (matches an active interest or
   mentioned repeatedly), enqueue a **low-priority** `deepen` job (selective analyze + small
@@ -43,9 +84,9 @@ deepen it in the background — the ambient pattern applied to the conversation,
   feeds proactivity and avoids re-surfacing. *Gate: a paper discussed today isn't re-surfaced
   by the daily digest.*
 
-**Enabling work:** a `priority` column on `research_jobs` (user-requested > ambient-deepen);
-`recognize` MCP tool; SKILL.md guidance to fire `recognize` on *any* paper mention (cheap) but
-`survey`/`deep_dive` only on clear intent.
+**Enabling work:** see *OpenClaw integration architecture* above (HTTP `/recognize` + `/deepen`,
+the TS hook plugin, the `priority` column, target capture). The hook injects context; the agent
+never has to decide to look a paper up.
 
 ---
 
