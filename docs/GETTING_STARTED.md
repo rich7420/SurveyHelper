@@ -52,7 +52,9 @@ surveyHelper speaks **MCP** — point any MCP client at `http://localhost:8765/m
 **A. From an MCP-capable agent (Claude Desktop, OpenClaw, …)** — add the server, then just ask:
 > "Survey arXiv 2201.11903 and tell me its purpose and how many references it has."
 
-**B. From Python (no agent needed):**
+**B. From Python (no agent needed)** — save as `first_survey.py` and run it from the repo with
+`uv run python first_survey.py` (uv installs the `mcp` client for you; or `pip install mcp` in your
+own environment first):
 ```python
 import asyncio, json
 from mcp.client.streamable_http import streamablehttp_client
