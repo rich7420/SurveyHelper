@@ -58,6 +58,10 @@ openclaw/     the ambient plugin + skill + heartbeat + installers
 - **The trust invariant**: synthesis asserts only what the grounded + verbatim verifier confirms.
   Don't weaken the verifier to make more claims "pass" — improve the evidence instead.
 
+## Releasing
+Maintainers: the full release procedure (versioning, tag + GitHub Release, and publishing the
+OpenClaw plugin to ClawHub) is in [`RELEASE.md`](RELEASE.md).
+
 ## Reporting issues
 
 Include: what you ran, the backend (`SURVEYHELPER_LLM_BACKEND`), and the relevant worker/MCP log
