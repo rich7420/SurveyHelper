@@ -48,6 +48,7 @@ export default definePluginEntry({
             in_graph?: boolean; paper_id?: number; title?: string; tldr?: string;
             user_state?: string; deep_analyzed?: boolean; references?: number;
             connections?: { title?: string }[];
+            in_your_reading?: { title?: string; hops?: number; state?: string }[];
           };
           if (!r.in_graph) return undefined;
 
@@ -66,6 +67,10 @@ export default definePluginEntry({
             .map((c) => c.title)
             .filter(Boolean)
             .join("; ");
+          const reading = (r.in_your_reading ?? [])
+            .slice(0, 2)
+            .map((x) => `"${x.title}" (${x.hops}h, ${x.state})`)
+            .join("; ");
           const lines = [
             `[surveyHelper memory] This paper is already in your research graph: "${r.title}".`,
             r.tldr ? `  Summary: ${r.tldr}` : "",
@@ -73,6 +78,7 @@ export default definePluginEntry({
             `  ${r.references ?? 0} references tracked` +
               (r.deep_analyzed ? ", deep-analyzed." : " (deepening in the background)."),
             related ? `  Related in your graph: ${related}.` : "",
+            reading ? `  Connected to what you've read: ${reading}.` : "",
           ]
             .filter(Boolean)
             .join("\n");

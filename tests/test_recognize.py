@@ -44,6 +44,22 @@ async def test_recognize_by_title_substring():
 
 
 @pytest.mark.asyncio
+async def test_recognize_graph_link_to_read_set():
+    pool = await _db()
+    await pool.execute("DELETE FROM papers WHERE arxiv_id IN ('7777.00500','7777.00501')")
+    focus = await papers.upsert(PaperMeta(arxiv_id="7777.00500", title="Focus Paper"))
+    nbr = await papers.upsert(PaperMeta(arxiv_id="7777.00501", title="Read Neighbor"))
+    await analysis.save(focus, config.PIPELINE_VERSION, step_status={"0": "ok"}, purpose="t")
+    await papers.add_citation(focus, nbr, "reference")
+    await personal.set_state(nbr, "read")
+
+    r = await recognize("arXiv:7777.00500")
+    assert any(link["paper_id"] == nbr and link["hops"] == 1
+               for link in r["in_your_reading"])
+    await pool.execute("DELETE FROM papers WHERE id = ANY($1::bigint[])", [focus, nbr])
+
+
+@pytest.mark.asyncio
 async def test_recognize_unknown_is_not_in_graph():
     await _db()
     r = await recognize("arXiv:9999.99999")

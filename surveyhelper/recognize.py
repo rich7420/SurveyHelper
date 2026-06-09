@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import config
-from .db import analysis, papers, personal
+from .db import analysis, graph, papers, personal
 from .db import embeddings as emb_db
 from .sources.identifiers import parse_identifier
 
@@ -34,6 +34,11 @@ async def recognize(mention: str) -> dict[str, Any]:
                         "sim": round(float(r["sim"]), 2)}
                        for r in await emb_db.similar_to_paper(pid, k=3)]
 
+    # A3: graph distance to what you've already read ("2 hops from [X you read]")
+    in_your_reading = [{"paper_id": r["id"], "title": r["title"],
+                        "hops": r["hops"], "state": r["state"]}
+                       for r in await graph.nearest_read_papers(pid, max_hops=2)]
+
     return {
         "in_graph": True,
         "paper_id": pid,
@@ -44,6 +49,7 @@ async def recognize(mention: str) -> dict[str, Any]:
         "deep_analyzed": step_status.get("2") == "ok",
         "references": await papers.count_references(pid),
         "connections": connections,
+        "in_your_reading": in_your_reading,
     }
 
 

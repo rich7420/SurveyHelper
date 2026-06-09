@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS citations (
     is_influential BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (src, dst, edge_type)
 );
+CREATE INDEX IF NOT EXISTS citations_dst_idx ON citations (dst);  -- reverse/bidirectional traversal
 
 -- ── derived analysis (re-runnable, versioned, per-step status) ────────────────
 CREATE TABLE IF NOT EXISTS paper_analysis (
@@ -74,6 +75,8 @@ CREATE TABLE IF NOT EXISTS paper_embeddings (
     embedding vector(384),              -- EMBED_DIM (see header)
     PRIMARY KEY (paper_id, kind)
 );
+CREATE INDEX IF NOT EXISTS paper_embeddings_hnsw
+    ON paper_embeddings USING hnsw (embedding vector_cosine_ops);
 
 CREATE TABLE IF NOT EXISTS syntheses (
     id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
