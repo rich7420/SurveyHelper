@@ -5,7 +5,15 @@ import pytest
 from surveyhelper import config
 from surveyhelper.db import analysis, get_pool, papers, personal
 from surveyhelper.models import PaperMeta
-from surveyhelper.recognize import recognize
+from surveyhelper.recognize import _name_tokens, recognize
+
+
+def test_name_tokens_extracts_method_names_not_authors():
+    # >=2 capitals = method-name-like; ordinary words and author names are excluded
+    assert _name_tokens("Im reading the BERT paper by Devlin et al") == ["BERT"]
+    assert _name_tokens("compare FlashAttention with ELMo and RoBERTa") == [
+        "FlashAttention", "ELMo", "RoBERTa"]
+    assert _name_tokens("can you explain attention to me, Alice?") == []   # one-capital words out
 
 
 async def _db():

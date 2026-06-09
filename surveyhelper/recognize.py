@@ -8,6 +8,7 @@ fast and side-effect-free.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from . import config
@@ -63,10 +64,19 @@ async def _resolve(mention: str):
         if p:
             return p
 
-    # free text: try a title substring, then semantic nearest
+    # free text: title-substring, then method-name tokens, then semantic nearest
     p = await papers.find_by_title_like(mention)
     if p:
         return p
+
+    # Conversational mentions ("I'm reading the BERT paper by Devlin et al") dilute the
+    # embedding below threshold, so first match distinctive method-name tokens (>=2 capitals:
+    # BERT, ELMo, GPT, FlashAttention, RoBERTa) against a title PREFIX — the method name.
+    for token in _name_tokens(mention):
+        p = await papers.find_by_title_prefix(token)
+        if p:
+            return p
+
     try:
         from . import embeddings
         vec = await embeddings.embed_one(mention[:500])
@@ -76,3 +86,14 @@ async def _resolve(mention: str):
     except Exception:
         pass
     return None
+
+
+def _name_tokens(mention: str) -> list[str]:
+    """Distinctive method-name tokens: length >= 3 with >= 2 uppercase letters (BERT, ELMo,
+    GPT, RoBERTa, FlashAttention). Excludes ordinary words and author names (one capital)."""
+    seen, out = set(), []
+    for tok in re.findall(r"[A-Za-z][A-Za-z0-9-]{2,}", mention):
+        if sum(c.isupper() for c in tok) >= 2 and tok.lower() not in seen:
+            seen.add(tok.lower())
+            out.append(tok)
+    return out

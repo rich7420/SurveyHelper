@@ -145,6 +145,16 @@ async def find_by_title_like(text: str) -> Optional[asyncpg.Record]:
            ORDER BY length(title) DESC LIMIT 1""", text)
 
 
+async def find_by_title_prefix(prefix: str) -> Optional[asyncpg.Record]:
+    """A paper whose title *starts with* `prefix` (the method name, e.g. 'BERT' → 'BERT: …').
+    Shortest title first so 'BERT' resolves to the canonical paper, not 'BERT-of-Theseus…'."""
+    pool = await get_pool()
+    return await pool.fetchrow(
+        """SELECT * FROM papers
+           WHERE title ILIKE $1 || '%'
+           ORDER BY length(title) ASC LIMIT 1""", prefix)
+
+
 async def count_references(paper_id: int) -> int:
     pool = await get_pool()
     return await pool.fetchval(
