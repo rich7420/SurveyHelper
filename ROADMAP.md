@@ -66,10 +66,9 @@ where the product value still lives.
 | 7 | Proactivity — daily `proactive_scan` + digest, **semantic relevance filter** | ✅ done |
 | 8 | Eval — golden set + regression run + cost dashboard | ◻ partial (faithfulness self-check + `usage_log`/`cost_summary`; golden set TODO) |
 
-**All 8 phases implemented.** Remaining work is refinement: a hand-labeled golden set for
-Phase 8 (the faithfulness self-check is a cheap proxy), selective deep-analysis during expand
-(so synthesis has richer material without analyzing every node), and an Anthropic API key as a
-robust alternative to the `claude -p` subscription path.
+**All 8 phases implemented.** The next development arc — amplify synthesis, graph-aware
+ambient conversation, trust/eval, and portability — is detailed in
+[`docs/development-roadmap.md`](docs/development-roadmap.md).
 
 ## Open decisions (settle before the dependent phase)
 
