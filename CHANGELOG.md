@@ -3,6 +3,15 @@
 All notable changes to surveyHelper. Format follows [Keep a Changelog](https://keepachangelog.com/),
 and this project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] — 2026-06-09
+
+### Fixed
+- **OpenClaw ambient plugin install from a clone.** The plugin's prebuilt `dist/index.js` was
+  gitignored (global `dist/` rule) and therefore absent from the published repo; with no build step
+  in the installer, the plugin could only be installed by the author. The prebuilt entry is now
+  committed. Validated end-to-end: a fresh clone installs the plugin into OpenClaw and ambient
+  recognition works.
+
 ## [0.1.0] — 2026-06-09
 
 First public release. A local-first research companion: an MCP server + background worker (and an
