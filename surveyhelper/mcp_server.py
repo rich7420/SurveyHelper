@@ -182,6 +182,20 @@ async def synthesize_graph(paper_id: int) -> dict[str, Any]:
 
 
 @mcp.tool()
+async def deep_dive(paper_id: int, analyze_top_k: int = 3) -> dict[str, Any]:
+    """Expand a paper's graph to depth 2 AND deep-analyze its top-K most-influential
+    references (background, budget-bounded), so a following synthesize has structured
+    material. Then call synthesize_graph + get_synthesis for the reduce."""
+    if await papers.get(paper_id) is None:
+        return {"status": "not_found", "paper_id": paper_id}
+    jid = await jobs_repo.enqueue("expand", root_paper_id=paper_id, requested_depth=2,
+                                  budget={"analyze_influential": max(0, analyze_top_k)},
+                                  triggered_by="deep_dive", priority=60)
+    return {"status": "queued", "job_id": jid, "paper_id": paper_id,
+            "note": "graph + influential nodes deepening; synthesize when done"}
+
+
+@mcp.tool()
 async def get_synthesis(paper_id: int) -> dict[str, Any]:
     """Return the latest graph synthesis (lineage/open-problems/contradictions/map). Each claim
     cites source paper ids; `paper_index` resolves them to titles so you can drill into them."""

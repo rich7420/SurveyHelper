@@ -68,6 +68,26 @@ async def run_expand(job: asyncpg.Record) -> dict[str, Any]:
             log.warning("expand: paper %s failed (%s)", pid, exc)
             await jobs.set_frontier_status(job_id, pid, "failed")
 
+    # B1: optionally deep-analyze the top-K most-influential references so a later
+    # synthesis reduces over structured fields, not just tldrs. Budget-bounded; the
+    # analyze jobs themselves enforce the daily cost breaker.
+    try:
+        budget = job["budget"]
+    except (KeyError, IndexError, TypeError):
+        budget = None
+    analyze_n = int((budget or {}).get("analyze_influential", 0))
+    queued_analysis = 0
+    if analyze_n:
+        for r in await papers.references_of(root):     # influential-first
+            if queued_analysis >= analyze_n:
+                break
+            a = await analysis.get(r["id"], config.PIPELINE_VERSION)
+            if a and a["purpose"] and (a["step_status"] or {}).get("2") != "ok":
+                await jobs.enqueue("analyze", root_paper_id=r["id"],
+                                   triggered_by=f"expand:{job_id}", priority=80)
+                queued_analysis += 1
+        log.info("expand root=%s queued %d influential-node analyses", root, queued_analysis)
+
     capped = processed >= MAX_PAPERS_PER_JOB
     edges = await papers.count_references(root)
     log.info("expand root=%s done: %d papers (depth %d)%s",

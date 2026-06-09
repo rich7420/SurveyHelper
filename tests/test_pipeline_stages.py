@@ -179,6 +179,43 @@ async def test_proactive_dedups_known_papers(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_expand_selective_analyze_enqueues_influential(monkeypatch):
+    """B1: expand with analyze_influential enqueues analyze for influential card-not-deep refs."""
+    pool = await _db()
+    await pool.execute("DELETE FROM papers WHERE arxiv_id IN ('7777.00600','7777.00601','7777.00602')")
+    from surveyhelper.db import jobs
+    import surveyhelper.pipeline.expand as ex
+
+    root = await papers.upsert(PaperMeta(arxiv_id="7777.00600", title="Root"))
+    infl = await papers.upsert(PaperMeta(arxiv_id="7777.00601", title="Influential Ref"))
+    other = await papers.upsert(PaperMeta(arxiv_id="7777.00602", title="Other Ref"))
+    await papers.add_citation(root, infl, "reference", True)    # influential
+    await papers.add_citation(root, other, "reference", False)
+    # both have a card, neither is deep-analyzed
+    await analysis.save(infl, config.PIPELINE_VERSION, step_status={"0": "ok", "1": "ok"}, purpose="t1")
+    await analysis.save(other, config.PIPELINE_VERSION, step_status={"0": "ok"}, purpose="t2")
+
+    async def _noop(pid):
+        return None
+    monkeypatch.setattr(ex, "_ensure_analyzed", _noop)
+    monkeypatch.setattr(ex, "MAX_PAPERS_PER_JOB", 3)
+
+    jid = await jobs.enqueue("expand", root_paper_id=root, requested_depth=1,
+                             budget={"analyze_influential": 1})
+    await jobs.set_status(jid, "running")
+    await ex.run_expand(await jobs.get(jid))
+
+    # the influential ref got an analyze job queued
+    n = await pool.fetchval(
+        "SELECT count(*) FROM research_jobs WHERE type='analyze' AND root_paper_id=$1 AND status='pending'",
+        infl)
+    assert n == 1
+    await pool.execute("DELETE FROM research_jobs WHERE root_paper_id = ANY($1::bigint[])",
+                       [root, infl, other])
+    await pool.execute("DELETE FROM papers WHERE id = ANY($1::bigint[])", [root, infl, other])
+
+
+@pytest.mark.asyncio
 async def test_synthesize_needs_enough_analyzed_papers():
     """Synthesis refuses (no LLM call) when the sub-graph lacks analyzed content."""
     pool = await _db()
