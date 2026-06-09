@@ -157,8 +157,20 @@ async def test_proactive_dedups_known_papers(monkeypatch):
         pid = await papers.upsert(PaperMeta(arxiv_id=ident, title="Brand New"))
         return SurveyResult(status="card", card=Card(paper_id=pid, title="Brand New", arxiv_id=ident))
 
+    async def fake_embed(texts):
+        return [[1.0] * 384 for _ in texts]
+
+    async def fake_embed_one(t):
+        return [1.0] * 384
+
+    async def fake_interest_emb(i):
+        return None
+
     monkeypatch.setattr(pro.arxiv, "search_recent", fake_search)
     monkeypatch.setattr(pro, "survey", fake_survey)
+    monkeypatch.setattr(pro.embeddings, "embed", fake_embed)        # avoid loading the model
+    monkeypatch.setattr(pro.embeddings, "embed_one", fake_embed_one)
+    monkeypatch.setattr(pro.emb_db, "interest_embedding", fake_interest_emb)
 
     res = await pro.run_scan()
     assert res["new"] == 1          # existing deduped; only the brand-new surfaced

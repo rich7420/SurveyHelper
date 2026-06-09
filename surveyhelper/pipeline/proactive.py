@@ -12,6 +12,8 @@ from __future__ import annotations
 import datetime as _dt
 from typing import Any
 
+from .. import embeddings
+from ..db import embeddings as emb_db
 from ..db import notifications, papers, personal, settings
 from ..logging_setup import get
 from ..sources import arxiv
@@ -23,6 +25,7 @@ _LAST_SCAN_KEY = "last_proactive_scan"
 DEFAULT_WINDOW_DAYS = 7
 MAX_PER_INTEREST = 25
 CARDS_PER_INTEREST = 3
+RELEVANCE_THRESHOLD = 0.62   # cosine; below this a keyword hit is deemed off-topic
 
 
 async def _since() -> _dt.datetime:
@@ -52,15 +55,24 @@ async def run_scan() -> dict[str, Any]:
             log.warning("scan: arXiv search failed for '%s' (%s)", label, exc)
             continue
 
+        # Semantic re-rank: arXiv keyword search is broad, so rank candidates by cosine
+        # to the interest and drop off-topic hits (Phase 6b — fixes loose keyword matches).
+        ivec = await emb_db.interest_embedding(interest["id"]) or await embeddings.embed_one(label)
+        fresh = [m for m in results if not await papers.find_by_alias(f"arxiv:{m.arxiv_id}")]
+        ranked: list = []
+        if fresh:
+            cvecs = await embeddings.embed([f"{m.title}. {m.abstract or ''}"[:1000] for m in fresh])
+            ranked = sorted(((embeddings.cosine(ivec, cv), m) for m, cv in zip(fresh, cvecs)),
+                            key=lambda x: -x[0])
+
         carded = []
-        for meta in results:
-            # dedup: skip anything we already track (cards, references, dismissed)
-            if await papers.find_by_alias(f"arxiv:{meta.arxiv_id}"):
-                continue
+        for sim, meta in ranked:
+            if sim < RELEVANCE_THRESHOLD:
+                break                                # sorted desc -> rest are off-topic
             res = await survey(meta.arxiv_id, enqueue_enrich=False, enqueue_deep=False)
             if res.card:
                 carded.append({"paper_id": res.card.paper_id, "title": res.card.title,
-                               "arxiv_id": res.card.arxiv_id})
+                               "arxiv_id": res.card.arxiv_id, "relevance": round(sim, 3)})
             if len(carded) >= CARDS_PER_INTEREST:
                 break
         if carded:

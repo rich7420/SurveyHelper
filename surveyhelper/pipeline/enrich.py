@@ -111,6 +111,16 @@ async def enrich(paper_id: int, *, references_limit: int = 50) -> dict[str, Any]
         step_status=step_status, purpose=purpose, code=code,
         provenance=provenance, model_used=(row["model_used"] if row else None),
     )
+    # Embed for semantic similarity / proactivity (Phase 6b), best-effort.
+    try:
+        from ..db import embeddings as emb_db
+        from ..embeddings import embed_one
+        blurb = f"{p['title'] or ''}. {purpose or p['abstract'] or ''}".strip(". ")
+        if blurb:
+            await emb_db.store_paper(paper_id, await embed_one(blurb[:1000]))
+    except Exception as exc:
+        log.warning("embed failed for paper %s (%s)", paper_id, exc)
+
     log.info("enriched paper %s: tldr=%s refs=%d (src=%s)",
              paper_id, got_tldr, refs_count, refs_source)
 

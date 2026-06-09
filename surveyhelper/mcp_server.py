@@ -130,9 +130,28 @@ async def correct_paper(paper_id: int, field: str, value: str,
 
 @mcp.tool()
 async def add_interest(label: str) -> dict[str, Any]:
-    """Add a research line you're following (used to focus future work)."""
+    """Add a research line you're following (used to focus proactive surfacing)."""
     iid = await personal.add_interest(label)
+    try:
+        from .db import embeddings as emb_db
+        from .embeddings import embed_one
+        await emb_db.store_interest(iid, await embed_one(label))
+    except Exception as exc:
+        log.warning("interest embed failed (%s)", exc)
     return {"status": "ok", "interest_id": iid, "label": label}
+
+
+@mcp.tool()
+async def similar_papers(paper_id: int, k: int = 8) -> dict[str, Any]:
+    """Find papers semantically similar to a given paper (pgvector cosine)."""
+    from .db import embeddings as emb_db
+    if not await emb_db.has_paper(paper_id):
+        return {"status": "no_embedding", "paper_id": paper_id}
+    rows = await emb_db.similar_to_paper(paper_id, k=k)
+    return {"status": "ok", "paper_id": paper_id,
+            "similar": [{"paper_id": r["id"], "title": r["title"],
+                         "arxiv_id": r["arxiv_id"], "sim": round(float(r["sim"]), 3)}
+                        for r in rows]}
 
 
 @mcp.tool()
