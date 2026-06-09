@@ -28,6 +28,8 @@ analytics = ["duckdb>=1.5.3"]
 [project.scripts]
 surveyhelper-mcp = "surveyhelper.mcp_server:main"
 surveyhelper-scan = "surveyhelper.scan:main"
+surveyhelper-scheduler = "surveyhelper.scheduler:main"
+surveyhelper-verify = "surveyhelper.selftest:main"
 
 [dependency-groups]
 dev = [

@@ -1,0 +1,31 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: surveyhelper
+          POSTGRES_PASSWORD: surveyhelper
+          POSTGRES_DB: surveyhelper
+        ports:
+          - 5544:5432
+        options: >-
+          --health-cmd "pg_isready -U surveyhelper -d surveyhelper"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    env:
+      SURVEYHELPER_DSN: postgresql://surveyhelper:surveyhelper@localhost:5544/surveyhelper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - name: Apply schema (idempotent)
+        run: uv run python -c "import asyncio; from surveyhelper.db import apply_schema; asyncio.run(apply_schema())"
+      - name: Run tests
+        run: uv run pytest -q

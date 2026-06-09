@@ -6,13 +6,31 @@ Submodules are thin repositories: `papers`, `analysis`, `jobs`, `notifications`.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Optional
 
 import asyncpg
 
 from .. import config
+from ..logging_setup import get
 
 _pool: Optional[asyncpg.Pool] = None
+
+
+async def apply_schema() -> bool:
+    """Apply schema.sql idempotently (every statement is IF NOT EXISTS) so upgrades that add
+    tables never break an existing install. Safe to call on every boot."""
+    candidates = [Path(__file__).resolve().parents[2] / "schema.sql",
+                  Path("/app/schema.sql"), Path("schema.sql")]
+    path = next((p for p in candidates if p.exists()), None)
+    if path is None:
+        get("db").warning("schema.sql not found (looked in %s); skipping auto-apply",
+                          ", ".join(str(p) for p in candidates))
+        return False
+    pool = await get_pool()
+    await pool.execute(path.read_text())     # multi-statement script via simple query protocol
+    get("db").info("schema applied (idempotent) from %s", path)
+    return True
 
 
 async def _init_conn(conn: asyncpg.Connection) -> None:

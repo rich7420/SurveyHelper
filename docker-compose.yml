@@ -1,5 +1,15 @@
-# Full surveyHelper stack: `cp .env.example .env`, set ANTHROPIC_API_KEY, then `docker compose up -d`.
-# Brings up pgvector Postgres (schema auto-applied), the background worker, and the MCP server.
+# Full surveyHelper stack: `cp .env.example .env`, set ONE provider key, then `docker compose up -d`.
+# Brings up pgvector Postgres (schema auto-applied), the worker, the MCP server, and the daily
+# proactive-scan scheduler. Verify it works: `docker compose run --rm worker surveyhelper-verify`.
+
+x-app-env: &app-env
+  SURVEYHELPER_DSN: postgresql://surveyhelper:surveyhelper@db:5432/surveyhelper
+  SURVEYHELPER_LLM_BACKEND: ${SURVEYHELPER_LLM_BACKEND:-auto}   # auto picks the provider whose key is set
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -20,10 +30,7 @@ services:
   worker:
     build: .
     command: ["python", "-m", "surveyhelper.worker"]
-    environment:
-      SURVEYHELPER_DSN: postgresql://surveyhelper:surveyhelper@db:5432/surveyhelper
-      SURVEYHELPER_LLM_BACKEND: api
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY in .env (or use the cli backend natively)}
+    environment: *app-env
     depends_on:
       db:
         condition: service_healthy
@@ -34,10 +41,16 @@ services:
     command: ["surveyhelper-mcp"]
     ports:
       - "${SURVEYHELPER_MCP_PORT:-8765}:8765"
-    environment:
-      SURVEYHELPER_DSN: postgresql://surveyhelper:surveyhelper@db:5432/surveyhelper
-      SURVEYHELPER_LLM_BACKEND: api
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  scheduler:
+    build: .
+    command: ["python", "-m", "surveyhelper.scheduler"]   # enqueues proactive_scan daily
+    environment: *app-env
     depends_on:
       db:
         condition: service_healthy

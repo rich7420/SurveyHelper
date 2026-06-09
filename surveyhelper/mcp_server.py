@@ -278,7 +278,18 @@ async def http_health(request):
     return JSONResponse({"ok": True})
 
 
+async def _boot() -> None:
+    # Runs in its own loop, then closes the pool so mcp.run() recreates it on the server loop.
+    from .db import apply_schema, close_pool
+    from .preflight import run_preflight
+    await run_preflight(service="mcp")
+    await apply_schema()
+    await close_pool()
+
+
 def main() -> None:
+    import asyncio
+    asyncio.run(_boot())               # legible boot + idempotent schema before serving
     log.info("surveyHelper MCP server on http://%s:%s (streamable-http + /recognize)",
              config.MCP_HOST, config.MCP_PORT)
     mcp.run(transport="streamable-http")

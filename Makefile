@@ -1,4 +1,4 @@
-.PHONY: db schema mcp worker test fmt
+.PHONY: db schema mcp worker scheduler verify test fmt
 
 DSN ?= postgresql://surveyhelper:surveyhelper@localhost:5544/surveyhelper
 
@@ -15,6 +15,12 @@ mcp:  ## run the MCP server (streamable-http :8765)
 
 worker:  ## run the background worker
 	uv run python -m surveyhelper.worker
+
+scheduler:  ## run the daily proactive-scan scheduler
+	uv run python -m surveyhelper.scheduler
+
+verify:  ## first-run self-test (surveys a known paper, prints the card)
+	uv run surveyhelper-verify
 
 test:  ## run unit tests
 	uv run pytest -q

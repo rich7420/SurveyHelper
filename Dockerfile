@@ -9,6 +9,7 @@ WORKDIR /app
 # Install deps first (cached layer); --no-dev keeps test/eval tooling out of the image.
 COPY pyproject.toml uv.lock README.md ./
 COPY surveyhelper ./surveyhelper
+COPY schema.sql ./schema.sql               # applied idempotently on boot (db.apply_schema)
 RUN uv sync --frozen --no-dev
 
 # venv binaries (python, surveyhelper-mcp, surveyhelper-scan) on PATH

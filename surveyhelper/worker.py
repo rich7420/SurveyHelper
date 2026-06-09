@@ -15,8 +15,9 @@ from typing import Awaitable, Callable
 import asyncpg
 
 from . import http
-from .db import close_pool, jobs, notifications
+from .db import apply_schema, close_pool, jobs, notifications
 from .logging_setup import get
+from .preflight import run_preflight
 
 log = get("worker")
 
@@ -134,6 +135,8 @@ async def _run_one(job: asyncpg.Record) -> None:
 
 
 async def run(stop: asyncio.Event) -> None:
+    await run_preflight(service="worker")     # legible boot: config + key + DB, fail fast on DB
+    await apply_schema()                       # idempotent — upgrades never break an old install
     log.info("worker started")
     cycle = 0
     while not stop.is_set():
