@@ -17,7 +17,7 @@ from .. import config
 from ..db import analysis, notifications, papers, syntheses, usage
 from ..llm.claude_cli import complete
 from ..logging_setup import get
-from .verify import verify_contradictions
+from .verify import verify_contradictions_grounded
 
 log = get("synthesize")
 
@@ -71,8 +71,8 @@ async def _gather(root_id: int) -> tuple[Any, list[dict]]:
         a = await analysis.get(r["id"], config.PIPELINE_VERSION)
         if not a or not a["purpose"]:
             continue
-        item = {"id": r["id"], "title": (r["title"] or "")[:160], "year": r["year"],
-                "influential": bool(influential), "summary": a["purpose"][:300]}
+        item = {"id": r["id"], "arxiv_id": r["arxiv_id"], "title": (r["title"] or "")[:160],
+                "year": r["year"], "influential": bool(influential), "summary": a["purpose"][:300]}
         arch = (a["architecture"] or {}).get("data") if a["architecture"] else None
         lim = (a["limitations"] or {}).get("data") if a["limitations"] else None
         if arch and arch.get("core_idea"):
@@ -104,10 +104,11 @@ async def synthesize(root_id: int, *, job_id: int | None = None) -> dict[str, An
                     tokens=c.input_tokens + c.output_tokens, cost_usd=c.cost_usd)
     data = _extract_json(c.text) or {}
 
-    # M2a: verify each contradiction has two-sided evidence; abstain (tentative) otherwise.
-    content = {it["id"]: _content_blob(it) for it in items}
-    contradictions, n_verified = await verify_contradictions(
-        data.get("contradictions") or [], content, job_id=job_id)
+    # M2a (L2): verify each contradiction against the cited papers' FULL TEXT — quote real
+    # spans from both sides or abstain (tentative). Grounds trust in the source, not summaries.
+    arxiv_map = {it["id"]: it["arxiv_id"] for it in items if it.get("arxiv_id")}
+    contradictions, n_verified = await verify_contradictions_grounded(
+        data.get("contradictions") or [], arxiv_map, job_id=job_id)
 
     # paper_set carries id->title so cited ids in claims are resolvable (B2 provenance).
     sid = await syntheses.save(

@@ -18,11 +18,85 @@ from .. import config
 from ..db import usage
 from ..llm.claude_cli import complete
 from ..logging_setup import get
+from ..sources import arxiv
 
 log = get("verify")
 
 _SYSTEM = ("You are a strict fact-checker. ONLY the provided paper content counts as evidence. "
            "Default to TENTATIVE whenever two-sided evidence is not clearly present.")
+
+_SYSTEM_GROUNDED = (
+    "You are a strict fact-checker reading FULL paper texts. A claimed contradiction is VERIFIED "
+    "only if you can quote a real, exact sentence from EACH cited paper supporting its opposing "
+    "side. If a paper's text contains no such sentence, the claim is TENTATIVE. NEVER fabricate "
+    "quotes — quote only verbatim text that is present.")
+
+MAX_GROUNDED = 6          # cap contradictions verified against full text (cost/latency)
+MAX_TEXT_CHARS = 40_000   # per paper, into the verifier prompt
+
+
+def _parse_grounded(text: str) -> tuple[str, str]:
+    m = re.match(r"\s*\**\s*(VERIFIED|TENTATIVE)\b\**:?\s*(.*)", text.strip(), re.I | re.S)
+    if m:
+        return ("verified" if m.group(1).upper() == "VERIFIED" else "tentative",
+                m.group(2).strip())
+    return ("tentative", text.strip()[:200])   # unparseable -> abstain
+
+
+async def verify_contradictions_grounded(contradictions: list, arxiv_map: dict[int, str], *,
+                                         job_id: int | None = None) -> tuple[list, int]:
+    """L2: verify each contradiction against the cited papers' FULL TEXT (fetched on demand).
+    VERIFIED only with a real quoted span from each side; else TENTATIVE (abstain)."""
+    if not contradictions:
+        return contradictions, 0
+
+    # fetch full text once per unique cited paper that has an arXiv id
+    cited = {p for c in contradictions if isinstance(c, dict) for p in c.get("papers", [])}
+    texts: dict[int, str] = {}
+    for pid in cited:
+        aid = arxiv_map.get(pid)
+        if not aid:
+            continue
+        try:
+            t = await arxiv.fetch_fulltext(aid, max_chars=MAX_TEXT_CHARS)
+            if t:
+                texts[pid] = t
+        except Exception as exc:
+            log.warning("verify: full text fetch failed for %s (%s)", pid, exc)
+
+    annotated, n_verified, n_grounded = [], 0, 0
+    for c in contradictions:
+        base = dict(c) if isinstance(c, dict) else {"claim": str(c), "papers": []}
+        pids = base.get("papers", [])
+        have = [p for p in pids if p in texts]
+        if len(have) < 2 or n_grounded >= MAX_GROUNDED:
+            base["status"] = "tentative"
+            base["evidence"] = (f"full text unavailable for {len(pids) - len(have)} cited paper(s)"
+                                if len(have) < 2 else "not checked (cap reached)")
+            annotated.append(base)
+            continue
+
+        n_grounded += 1
+        blocks = "\n\n".join(f"=== PAPER [{p}] FULL TEXT ===\n{texts[p]}" for p in have[:2])
+        prompt = (f"CLAIMED CONTRADICTION: {base.get('claim')}\n\n{blocks}\n\n"
+                  "Does each cited paper's text actually support its side of this contradiction? "
+                  "Quote the EXACT sentence from each that does. Reply ONE of:\n"
+                  "'VERIFIED: [<id>] \"<verbatim quote>\"; [<id>] \"<verbatim quote>\"'  (both sides real), or\n"
+                  "'TENTATIVE: <which side has no supporting sentence>'.")
+        r = await complete(prompt, model=config.VERIFY_MODEL, system=_SYSTEM_GROUNDED)
+        await usage.add(job_id=job_id, source="llm", calls=1,
+                        tokens=r.input_tokens + r.output_tokens, cost_usd=r.cost_usd)
+        status, evidence = _parse_grounded(r.text)
+        base["status"] = status
+        base["evidence"] = evidence[:400]
+        base["grounding"] = "full_text"
+        if status == "verified":
+            n_verified += 1
+        annotated.append(base)
+
+    log.info("grounded-verified %d/%d contradictions (%d checked against full text)",
+             n_verified, len(contradictions), n_grounded)
+    return annotated, n_verified
 
 
 def parse_verdicts(text: str, n: int) -> dict[int, dict]:

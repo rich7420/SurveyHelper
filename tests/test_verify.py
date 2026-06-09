@@ -1,6 +1,6 @@
 """Contradiction-verdict parsing — pure logic, no LLM (M2a)."""
 
-from surveyhelper.pipeline.verify import parse_verdicts
+from surveyhelper.pipeline.verify import _parse_grounded, parse_verdicts
 
 
 def test_parses_verified_and_tentative():
@@ -24,3 +24,18 @@ def test_unparseable_yields_nothing():
 
 def test_case_insensitive():
     assert parse_verdicts("1. tentative: meh", 1)[1]["status"] == "tentative"
+
+
+def test_grounded_verified_with_quotes():
+    s, e = _parse_grounded('VERIFIED: [1] "BERT is bidirectional"; [2] "GPT is left-to-right"')
+    assert s == "verified" and "bidirectional" in e
+
+
+def test_grounded_tentative():
+    s, _ = _parse_grounded("TENTATIVE: paper [2] has no supporting sentence")
+    assert s == "tentative"
+
+
+def test_grounded_unparseable_abstains():
+    s, _ = _parse_grounded("hmm, not sure")
+    assert s == "tentative"
