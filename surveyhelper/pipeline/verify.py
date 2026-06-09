@@ -27,9 +27,10 @@ _SYSTEM = ("You are a strict fact-checker. ONLY the provided paper content count
 
 _SYSTEM_GROUNDED = (
     "You are a strict fact-checker reading FULL paper texts. A claimed contradiction is VERIFIED "
-    "only if you can quote a real, exact sentence from EACH cited paper supporting its opposing "
-    "side. If a paper's text contains no such sentence, the claim is TENTATIVE. NEVER fabricate "
-    "quotes — quote only verbatim text that is present.")
+    "only if you can COPY a contiguous span of at least 10 words EXACTLY (verbatim, character for "
+    "character) from EACH cited paper supporting its opposing side. Do NOT paraphrase, summarize, "
+    "reconstruct, or stitch phrases together — copy a real run of words exactly as it appears. If "
+    "no such verbatim span exists in a paper, the claim is TENTATIVE.")
 
 MAX_GROUNDED = 6          # cap contradictions verified against full text (cost/latency)
 MAX_TEXT_CHARS = 40_000   # per paper, into the verifier prompt
@@ -41,6 +42,36 @@ def _parse_grounded(text: str) -> tuple[str, str]:
         return ("verified" if m.group(1).upper() == "VERIFIED" else "tentative",
                 m.group(2).strip())
     return ("tentative", text.strip()[:200])   # unparseable -> abstain
+
+
+# A cited quote looks like:  [131] "verbatim sentence from the paper"
+_QUOTE_RE = re.compile(r"\[(\d+)\]\s*[\"“”']([^\"“”']{8,})[\"“”']")
+
+
+def _extract_quotes(text: str) -> list[tuple[int, str]]:
+    return [(int(m.group(1)), m.group(2)) for m in _QUOTE_RE.finditer(text)]
+
+
+def _norm(s: str) -> str:
+    """Lowercase, drop punctuation, collapse whitespace — robust to PDF/HTML extraction noise."""
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9 ]", " ", s.lower())).strip()
+
+
+def _quote_in_text(quote: str, norm_text: str, *, min_run: int = 8) -> bool:
+    """True iff the quote is verbatim in the source: the whole normalized quote is a substring,
+    OR a contiguous run of >= `min_run` of its words is. The run tolerates a mangled word at the
+    edges (PDF/HTML extraction noise) but still rejects paraphrase — a reworded sentence has no
+    long verbatim run. This makes 'verified' a *mechanical* fact, not the verifier's say-so."""
+    nq = _norm(quote)
+    if len(nq) < 24:
+        return False
+    if nq in norm_text:
+        return True
+    toks = nq.split()
+    if len(toks) < min_run:
+        return False
+    return any(" ".join(toks[i:i + min_run]) in norm_text
+              for i in range(len(toks) - min_run + 1))
 
 
 async def verify_contradictions_grounded(contradictions: list, arxiv_map: dict[int, str], *,
@@ -63,6 +94,7 @@ async def verify_contradictions_grounded(contradictions: list, arxiv_map: dict[i
                 texts[pid] = t
         except Exception as exc:
             log.warning("verify: full text fetch failed for %s (%s)", pid, exc)
+    norm_texts = {pid: _norm(t) for pid, t in texts.items()}   # for mechanical quote matching
 
     annotated, n_verified, n_grounded = [], 0, 0
     for c in contradictions:
@@ -87,9 +119,24 @@ async def verify_contradictions_grounded(contradictions: list, arxiv_map: dict[i
         await usage.add(job_id=job_id, source="llm", calls=1,
                         tokens=r.input_tokens + r.output_tokens, cost_usd=r.cost_usd)
         status, evidence = _parse_grounded(r.text)
-        base["status"] = status
-        base["evidence"] = evidence[:400]
         base["grounding"] = "full_text"
+
+        # The crux: don't trust the verifier's say-so. If it claims VERIFIED, mechanically
+        # confirm its quotes are verbatim in the source, from two distinct papers. Else abstain.
+        if status == "verified":
+            quotes = _extract_quotes(r.text)
+            papers_quoted = {p for p, _ in quotes}
+            verbatim = bool(quotes) and all(_quote_in_text(q, norm_texts.get(p, "")) for p, q in quotes)
+            if verbatim and len(papers_quoted) >= 2:
+                base["grounding"] = "full_text+verbatim"
+                base["evidence"] = evidence[:400]
+            else:
+                status = "tentative"
+                base["evidence"] = "verifier quote(s) not found verbatim in the source — abstaining"
+        else:
+            base["evidence"] = evidence[:400]
+
+        base["status"] = status
         if status == "verified":
             n_verified += 1
         annotated.append(base)

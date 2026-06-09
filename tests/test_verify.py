@@ -1,6 +1,7 @@
 """Contradiction-verdict parsing — pure logic, no LLM (M2a)."""
 
-from surveyhelper.pipeline.verify import _parse_grounded, parse_verdicts
+from surveyhelper.pipeline.verify import (
+    _extract_quotes, _norm, _parse_grounded, _quote_in_text, parse_verdicts)
 
 
 def test_parses_verified_and_tentative():
@@ -39,3 +40,24 @@ def test_grounded_tentative():
 def test_grounded_unparseable_abstains():
     s, _ = _parse_grounded("hmm, not sure")
     assert s == "tentative"
+
+
+def test_extract_quotes_with_ids():
+    q = _extract_quotes('VERIFIED: [131] "we freeze the weights of the biLM"; [120] "is bidirectional"')
+    assert (131, "we freeze the weights of the biLM") in q
+    assert (120, "is bidirectional") in q
+
+
+def test_quote_present_in_source_passes():
+    text = _norm("To add ELMo, we first FREEZE the weights of the biLM, and then concatenate.")
+    assert _quote_in_text("freeze the weights of the biLM", text)
+
+
+def test_fabricated_quote_is_rejected():
+    text = _norm("This paper studies attention mechanisms in transformers at scale.")
+    assert not _quote_in_text("we freeze the weights of the biLM", text)
+
+
+def test_too_short_quote_rejected():
+    text = _norm("the quick brown fox jumps over the lazy dog repeatedly")
+    assert not _quote_in_text("the fox", text)   # below min_len, not a real quote
