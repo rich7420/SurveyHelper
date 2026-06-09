@@ -25,11 +25,11 @@ MAX_PAPERS = 40
 _SYSTEM = (
     "You are a research-survey analyst. Given a root paper and its references (each with a short "
     "summary), synthesize the intellectual landscape. Be specific and grounded ONLY in the "
-    "provided summaries — do not invent papers or claims. Be CONSERVATIVE about contradictions: "
-    "only report one when BOTH cited papers explicitly document opposing positions in their "
-    "provided content; if only one side is stated, it is NOT a contradiction (put it under "
-    "open_problems or omit). Prefer a few real, two-sided contradictions over many speculative "
-    "ones. Return JSON only."
+    "provided summaries — do not invent papers or claims. For contradictions: PROPOSE candidate "
+    "contradictions wherever two cited papers appear to take opposing positions on the same "
+    "question — favor surfacing a plausible tension over omitting it, because a separate verifier "
+    "will check each against the papers' full text and drop the unsupported ones. Name the two "
+    "paper ids for each. Return JSON only."
 )
 _SCHEMA = ('{"lineage": ["<how the core idea evolved across these papers, ordered>"], '
            '"open_problems": ["<limitations/questions recurring or unsolved across the set>"], '
