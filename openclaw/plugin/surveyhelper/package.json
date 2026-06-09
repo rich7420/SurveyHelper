@@ -1,12 +1,24 @@
 {
   "name": "openclaw-surveyhelper",
   "version": "0.1.0",
+  "description": "OpenClaw ambient-recognition plugin for surveyHelper — injects what your local research graph already knows about a paper mentioned in chat, with no tool call.",
   "type": "module",
   "main": "./dist/index.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rich7420/SurveyHelper",
+    "directory": "openclaw/plugin/surveyhelper"
+  },
+  "keywords": ["openclaw", "openclaw-plugin", "clawhub", "surveyhelper", "research", "mcp"],
+  "files": ["dist", "openclaw.plugin.json", "index.ts", "README.md"],
   "openclaw": {
     "extensions": ["./dist/index.js"],
     "compat": {
-      "pluginApi": ">=2026.3"
+      "pluginApi": ">=2026.3.0"
+    },
+    "build": {
+      "openclawVersion": "2026.5.7"
     }
   }
 }
