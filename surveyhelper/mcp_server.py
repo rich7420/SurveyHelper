@@ -220,8 +220,38 @@ async def run_proactive_scan() -> dict[str, Any]:
     return {"status": "queued", "job_id": jid}
 
 
+# ── HTTP API for the OpenClaw hook (Theme A) — cheap graph lookups, no agent turn ──
+@mcp.custom_route("/recognize", methods=["GET"])
+async def http_recognize(request):
+    from starlette.responses import JSONResponse
+    from .recognize import recognize
+    mention = request.query_params.get("mention", "")
+    if not mention.strip():
+        return JSONResponse({"in_graph": False, "error": "empty mention"})
+    return JSONResponse(await recognize(mention))
+
+
+@mcp.custom_route("/deepen", methods=["POST"])
+async def http_deepen(request):
+    from starlette.responses import JSONResponse
+    body = await request.json()
+    paper_id = body.get("paper_id")
+    if not paper_id or await papers.get(int(paper_id)) is None:
+        return JSONResponse({"status": "not_found"}, status_code=404)
+    jid = await jobs_repo.enqueue("deepen", root_paper_id=int(paper_id),
+                                  triggered_by="ambient", budget=body.get("target"),
+                                  priority=200)   # low priority: behind user-requested work
+    return JSONResponse({"status": "queued", "job_id": jid})
+
+
+@mcp.custom_route("/healthz", methods=["GET"])
+async def http_health(request):
+    from starlette.responses import JSONResponse
+    return JSONResponse({"ok": True})
+
+
 def main() -> None:
-    log.info("surveyHelper MCP server on http://%s:%s (streamable-http)",
+    log.info("surveyHelper MCP server on http://%s:%s (streamable-http + /recognize)",
              config.MCP_HOST, config.MCP_PORT)
     mcp.run(transport="streamable-http")
 

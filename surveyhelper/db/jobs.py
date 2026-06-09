@@ -15,13 +15,15 @@ from . import get_pool
 
 async def enqueue(job_type: str, *, root_paper_id: int | None = None,
                   requested_depth: int | None = None, triggered_by: str | None = None,
-                  budget: dict | None = None, parent_job_id: int | None = None) -> int:
+                  budget: dict | None = None, parent_job_id: int | None = None,
+                  priority: int = 100) -> int:
     pool = await get_pool()
     return await pool.fetchval(
         """INSERT INTO research_jobs
-               (type, root_paper_id, requested_depth, triggered_by, budget, parent_job_id, status)
-           VALUES ($1,$2,$3,$4,$5,$6,'pending') RETURNING id""",
-        job_type, root_paper_id, requested_depth, triggered_by, budget, parent_job_id,
+               (type, root_paper_id, requested_depth, triggered_by, budget, parent_job_id,
+                priority, status)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,'pending') RETURNING id""",
+        job_type, root_paper_id, requested_depth, triggered_by, budget, parent_job_id, priority,
     )
 
 
@@ -33,7 +35,7 @@ async def claim_next() -> Optional[asyncpg.Record]:
             row = await conn.fetchrow(
                 """SELECT * FROM research_jobs
                    WHERE status = 'pending' AND run_after <= now()
-                   ORDER BY run_after
+                   ORDER BY priority, run_after
                    FOR UPDATE SKIP LOCKED
                    LIMIT 1"""
             )

@@ -9,9 +9,10 @@ dependencies = [
     "httpx>=0.27",
     "asyncpg>=0.29",
     "pydantic>=2.6",
-    "feedparser>=6.0",          # arXiv Atom API
-    "pymupdf>=1.24",            # PDF full-text for pre-HTML papers
-    "fastembed>=0.3",           # local embeddings (onnx, no torch) — 384d bge-small
+    "feedparser>=6.0", # arXiv Atom API
+    "pymupdf>=1.24", # PDF full-text for pre-HTML papers
+    "fastembed>=0.3", # local embeddings (onnx, no torch) — 384d bge-small
+    "starlette>=1.2.1",
 ]
 
 [project.scripts]

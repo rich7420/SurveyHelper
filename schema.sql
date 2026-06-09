@@ -127,6 +127,7 @@ CREATE TABLE IF NOT EXISTS research_jobs (
     budget          JSONB,
     run_after       TIMESTAMPTZ DEFAULT now(),   -- deferred retry (e.g. S2 throttled)
     attempts        INT DEFAULT 0,
+    priority        INT DEFAULT 100,             -- lower runs first; user 50, ambient deepen 200
     created_at      TIMESTAMPTZ DEFAULT now(),
     updated_at      TIMESTAMPTZ DEFAULT now()
 );

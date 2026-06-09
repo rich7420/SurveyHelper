@@ -135,6 +135,16 @@ async def add_citation(src: int, dst: int, edge_type: str = "reference",
     )
 
 
+async def find_by_title_like(text: str) -> Optional[asyncpg.Record]:
+    """Loose title match: a stored title that is a substring of the mention, longest first.
+    (Catches 'let's discuss the FlashAttention paper' -> the stored 'FlashAttention…' row.)"""
+    pool = await get_pool()
+    return await pool.fetchrow(
+        """SELECT * FROM papers
+           WHERE title IS NOT NULL AND length(title) >= 8 AND $1 ILIKE '%' || title || '%'
+           ORDER BY length(title) DESC LIMIT 1""", text)
+
+
 async def count_references(paper_id: int) -> int:
     pool = await get_pool()
     return await pool.fetchval(
