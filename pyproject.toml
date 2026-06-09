@@ -15,6 +15,13 @@ dependencies = [
     "starlette>=1.2.1",
 ]
 
+[project.optional-dependencies]
+# DuckDB is an optional read-only analytics/eval companion (Phase 8). It is NOT
+# needed by the core system (which queries Postgres directly). Cross-tested:
+# premature for live dashboards (slower + a runtime extension fetch), but the right
+# tool for golden-set eval where it joins a CSV/parquet against Postgres natively.
+analytics = ["duckdb>=1.5.3"]
+
 [project.scripts]
 surveyhelper-mcp = "surveyhelper.mcp_server:main"
 surveyhelper-scan = "surveyhelper.scan:main"
@@ -23,6 +30,7 @@ surveyhelper-scan = "surveyhelper.scan:main"
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "duckdb>=1.5.3",
 ]
 
 [tool.pytest.ini_options]
