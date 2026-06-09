@@ -93,7 +93,7 @@ ambient conversation, trust/eval, and portability — is detailed in
 | Cost of deep analysis | **bounded** — daily budget breaker + haiku default (~\$0.36/paper full-text); pre-flight confirm still TODO |
 | Auth fragility | **managed** — synthesized long-lived credential; the robust fix is the API-key backend (M4) |
 | **Skeletal graph** (breadth ≫ depth) | **open** — synthesis is thin where nodes aren't analyzed → M1 selective depth |
-| **Unverified quality** | **open** — faithfulness self-grades; no golden set → M2 |
+| **Unverifiable synthesis** (the value *is* the risk) | **open** — self-graded groundedness ≠ correctness; relational claims have no single source; depth compounds analysis errors → M2 builds verifiability *into* synthesis (L2 spans + L4 abstention), VISION §5 |
 | **Not portable** | **open** — generalops/subscription coupling → M4 |
 
 ## Concrete next steps
@@ -109,12 +109,24 @@ research memory). Detail + the OpenClaw-integration design live in
   `paper_id`s; `get_synthesis` returns a `paper_index` to resolve them. Verified on BERT —
   contradictions drill to their exact sources (BERT vs ELMo/ULMFiT).
 
-**M2 — Make it trustworthy** *(stop shipping analysis we can't verify)*
-- A hand-checked **golden set** (~15–20 papers incl. the BERT/Ring/FlashAttention lines);
-  **independent faithfulness** (a *different* model, not self-grading); the DuckDB CSV-join eval
-  (`--extra analytics`).
-- *Gate:* a `pipeline_version` bump reports per-step agreement vs golden; faithfulness verdicts
-  come from a distinct model.
+**M2 — Build verifiability INTO synthesis** *(trust is the same object as the value — VISION §5)*
+The live `2/4 faithful` signal showed self-graded groundedness is weak, and synthesis (relational
+inference with no single source) is the hardest thing to trust. Climb the trust ladder
+(L0 self-graded → L2 evidence spans → L4 abstention) where it matters — *in synthesis*, not as a
+bolt-on:
+- **M2a — Evidence-span grounding + abstention (L2 + L4):** for each contradiction, the verifier
+  finds the *two-sided* evidence spans in the cited papers; if it can't, the claim is **tentative**,
+  not asserted. Provenance graduates from paper_ids → spans. *(Different verifier model = a useful
+  lower rung, L1, but not the destination — correlated hallucination remains.)*
+- **M2b — Golden-set fact-coverage (L3, the DuckDB payoff):** a `golden.csv` of verifiable facts
+  per well-known paper, joined against stored analysis via DuckDB (`--extra analytics`). This is an
+  *analysis-layer* measure — do **not** conflate it with synthesis trust.
+- **M2c — Surface trust:** expose groundedness / `tentative` flags on cards + synthesis so the
+  agent caveats ("tentative / 2-of-4 grounded") instead of presenting all claims as equally solid.
+- *Gate:* a synthesis marks its unverifiable contradictions `tentative`; each *asserted* contradiction
+  links to two-sided source spans; the agent surfaces the trust flag.
+- **Beware** the depth↔trust tension (VISION §5): richer synthesis fed by shaky deep analysis can be
+  *more detailed and less reliable* — M2 must land alongside, not after, more depth.
 
 **M3 — Finish the ambient loop** *(Theme A polish)*
 - `agent_turn_prepare`/`message send` **proactive push-back** when a background deepen/synthesis

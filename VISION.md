@@ -95,14 +95,61 @@ shape than in the depth of any one layer.**
 
 ---
 
-## 5. Where it's going — three horizons
+## 5. The epistemic crux — trust is not a later phase; it is the same object as the value
 
-**Horizon 1 — A grounded research memory (near).**
-Make the scarce layer trustworthy and substantive: *selective* deep-analysis of the influential
-nodes so synthesis has real material; synthesis with **provenance** (every claim linked to its
-source papers, so it's navigable and auditable); and a real eval (a golden set, independent
-faithfulness) so the synthesis can be *relied on*. The graph stops being a skeleton where it
-matters, and what it says becomes believable.
+The first live deep-analysis run scored one paper **2/4 faithful** — half its claims unsupported
+by the source — while the agent built a confident synthesis on top. That number is not a bug; it
+is a window onto the hardest truth about this system.
+
+**We have been measuring the wrong thing.** "Faithfulness" measures *groundedness* (is this in
+the source?) — necessary, but neither *correctness* nor *relevance*. A 4/4 analysis can faithfully
+extract trivia and miss the point; a 2/4 can carry two correct *inferred* claims not literally in
+the text. Conflating groundedness with quality is a category error.
+
+**Synthesis is harder to trust than analysis — categorically.** Analysis is *extraction*: each
+claim has a single source and can be checked against it. Synthesis is *relational inference* —
+"these two papers contradict" lives in *no single paper*; the model imposes the frame. Is the
+BERT-vs-ELMo "contradiction" real, or a rhetorical opposition of two coexisting design choices?
+There is no single source to check it against. **The scarce value and the hardest trust problem
+are the same object: synthesis.**
+
+**And depth can trade against trust.** Synthesis reduces over analysis; feeding it richer-but-
+shakier deep analysis (as selective depth does) can make the output simultaneously more detailed
+and *less* reliable — errors are inherited and compounded.
+
+**Trust is a ladder, and we are on its lowest rung:**
+
+| Level | Mechanism | Status |
+|---|---|---|
+| L0 | self-graded faithfulness (same model) | **we are here** |
+| L1 | cross-model verification | reduces error; correlated hallucination remains |
+| L2 | **extractive grounding** — each claim links to a verbatim source span (machine-checkable) | the real bar |
+| L3 | golden-set agreement vs human truth (sampled) | |
+| L4 | **calibrated abstention** — the system knows what it doesn't know and says so | the real bar |
+
+"Use a different model" (L1) helps but cannot solve correlated hallucination — models trained on
+similar data share blind spots. Real trust lives at **L2 + L4**: claims mechanically verifiable
+against source spans, and a system that *downgrades to tentative* when the evidence isn't there
+rather than asserting confidently.
+
+**The implication is structural:** trust cannot be a bolt-on. Because the value *is* the synthesis
+and the risk *is* the synthesis, verifiability must be built **into** synthesis:
+- provenance graduates from "cites which papers" to "links to the evidence spans" (L2);
+- synthesis **abstains** — a contradiction is marked *tentative* when two-sided evidence is missing (L4);
+- groundedness, correctness, and relevance stop being one number.
+
+---
+
+## 6. Where it's going — three horizons
+
+**Horizon 1 — A *verifiable* research memory (near).**
+Make the scarce layer substantive *and trustworthy in the strong sense* (§5). Substantive:
+*selective* deep-analysis of the influential nodes so synthesis has real material (done — M1/B1).
+Trustworthy: push verifiability **into** synthesis — provenance graduates from "cites which
+papers" (done — M1/B2) to **evidence-span grounding** (L2), and synthesis learns to **abstain**,
+marking a claim *tentative* when it can't find two-sided evidence (L4). A golden set (L3) measures
+the analysis layer. The test of this horizon is not "the synthesis is rich" but "**you can trust
+what it asserts, and it tells you when not to.**"
 
 **Horizon 2 — A research thinking partner (mid).**
 The system stops being something you query and becomes something that *thinks with you*. It
@@ -121,7 +168,7 @@ text) and temporal (freshness, drift, re-synthesis as the field moves).
 
 ---
 
-## 6. Improvement directions, by layer
+## 7. Improvement directions, by layer
 
 **Factual (the graph)**
 - Selective depth: analyze the most-influential nodes, not all — substance where it counts.
@@ -129,12 +176,15 @@ text) and temporal (freshness, drift, re-synthesis as the field moves).
   graph work grows heavy.
 - Multi-modal capture: figures, tables, equations, linked code — papers aren't only prose.
 
-**Interpretive (analysis + synthesis)**
-- Provenance: link every synthesis claim to paper_ids → auditable, navigable.
+**Interpretive (analysis + synthesis)** — *the trust frontier (§5)*
+- **Evidence-span grounding (L2):** every synthesis claim links not just to paper_ids (done) but
+  to the verbatim spans that support it — machine-checkable, not model-asserted.
+- **Abstention (L4):** mark a contradiction *tentative* when two-sided evidence isn't found;
+  a synthesis that says "I'm not sure" beats one that's confidently wrong.
+- **Separate groundedness / correctness / relevance** — stop collapsing quality into one number.
+- Cross-model faithfulness + a golden set (L1, L3) — useful lower rungs, not the destination.
 - Incremental + topic-level synthesis: re-synthesize as the graph grows; synthesize a *line*,
   not only a root paper.
-- Contradiction verification: confirm a reported conflict is real before asserting it.
-- Independent faithfulness + a golden set: stop self-grading; measure against truth.
 
 **Personal (you)**
 - The understanding model: track what *you* understand vs the field, and surface the delta — the
@@ -150,12 +200,14 @@ text) and temporal (freshness, drift, re-synthesis as the field moves).
 
 ---
 
-## 7. North star
+## 8. North star
 
-> **A local, always-on partner that maintains a grounded, personal model of the research you
-> care about — and thinks with you in the flow of conversation: surfacing the lineage you didn't
-> trace, the contradiction you missed, and the gap between what the field knows and what you do.**
+> **A local, always-on partner that maintains a grounded, personal model of the research you care
+> about — and thinks with you in the flow of conversation: surfacing the lineage you didn't trace,
+> the contradiction you missed, and the gap between what the field knows and what you do —
+> *grounded in evidence you can check, and honest about what it isn't sure of.***
 
-Everything in the roadmap is in service of closing the distance between that sentence and what
-the system does today. The shape is right. The work is to give each layer enough depth that the
-*integration* — which is the whole point — finally delivers.
+Everything in the roadmap is in service of closing the distance between that sentence and what the
+system does today. The shape is right. The work is to give each layer enough depth that the
+*integration* delivers — and to make what it asserts **verifiable**, because a research partner you
+cannot trust is not a partner. Trust is not the last phase; it is the same object as the value.
