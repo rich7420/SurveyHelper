@@ -69,6 +69,16 @@ CREATE TABLE IF NOT EXISTS paper_analysis (
     PRIMARY KEY (paper_id, pipeline_version)
 );
 
+-- cached extracted full text (so grounded verification/analysis don't re-fetch — expand
+-- verifiable volume by making source-checking cheap and repeatable).
+CREATE TABLE IF NOT EXISTS paper_fulltext (
+    paper_id   BIGINT PRIMARY KEY REFERENCES papers(id) ON DELETE CASCADE,
+    text       TEXT,
+    source     TEXT,
+    chars      INT,
+    fetched_at TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS paper_embeddings (
     paper_id  BIGINT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
     kind      TEXT NOT NULL,

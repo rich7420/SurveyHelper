@@ -17,9 +17,9 @@ import re
 
 from .. import config
 from ..db import analysis, notifications, papers, usage
+from ..fulltext import get_fulltext
 from ..llm.claude_cli import complete
 from ..logging_setup import get
-from ..sources import arxiv
 
 log = get("analyze")
 
@@ -96,7 +96,7 @@ async def analyze(paper_id: int, *, job_id: int | None = None) -> dict[str, Any]
                                 "daily_budget_usd": config.DAILY_BUDGET_USD}, job_id=job_id)
         return {"analyzed": False, "reason": "daily_budget_reached"}
 
-    text = await arxiv.fetch_fulltext(p["arxiv_id"]) if p["arxiv_id"] else None
+    text = await get_fulltext(paper_id, p["arxiv_id"]) if p["arxiv_id"] else None
     coverage = "full"
     if not text:
         text = p["abstract"] or ""

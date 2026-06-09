@@ -16,9 +16,9 @@ from typing import Any
 
 from .. import config
 from ..db import usage
+from ..fulltext import get_fulltext
 from ..llm.claude_cli import complete
 from ..logging_setup import get
-from ..sources import arxiv
 
 log = get("verify")
 
@@ -89,7 +89,7 @@ async def verify_contradictions_grounded(contradictions: list, arxiv_map: dict[i
         if not aid:
             continue
         try:
-            t = await arxiv.fetch_fulltext(aid, max_chars=MAX_TEXT_CHARS)
+            t = await get_fulltext(pid, aid, max_chars=MAX_TEXT_CHARS)   # cached
             if t:
                 texts[pid] = t
         except Exception as exc:
