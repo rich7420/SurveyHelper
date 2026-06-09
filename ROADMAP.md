@@ -114,12 +114,17 @@ The live `2/4 faithful` signal showed self-graded groundedness is weak, and synt
 inference with no single source) is the hardest thing to trust. Climb the trust ladder
 (L0 self-graded → L2 evidence spans → L4 abstention) where it matters — *in synthesis*, not as a
 bolt-on:
-- **M2a — Evidence + abstention (L1+L4)** ✅ *done* — a cross-model verifier (haiku vs the sonnet
-  synthesizer) checks each contradiction for two-sided evidence in the cited papers' stored content;
-  unverifiable claims are downgraded to **`tentative`** with the missing-evidence reason;
-  `get_synthesis` surfaces a trust summary. *Live on BERT: 0/5 verified → all honestly tentative,
-  replacing confidently-wrong with honestly-uncertain.* **Next within M2a:** true L2 — verify against
-  stored **full-text spans** (not just summaries), so well-grounded contradictions can actually verify.
+- **M2a — Evidence + abstention, grounded in source (L1+L2+L4)** ✅ *done* — a cross-model verifier
+  (haiku vs the sonnet synthesizer) now **fetches the cited papers' full text** and must quote a
+  verbatim sentence from EACH side; one-sided or absent → **`tentative`** with the reason;
+  `get_synthesis` surfaces a trust summary. *Live on BERT: the verifier quoted BERT's real
+  section-3.1 sentence but found no ELMo counter-sentence — exposing that many "contradictions" were
+  the synthesizer's **one-sided framing**, not documented disagreements.* This is the system reading
+  the source, not summaries.
+- **M2a-next — the iterative loop ("反覆查證"):** feed verification back into synthesis — only
+  *assert* verified contradictions, demote the rest; and make the **synthesizer itself conservative**
+  (claim a contradiction only when both sides are documented). Optionally re-search other sections
+  when one side is missing before abstaining.
 - **M2b — Golden-set fact-coverage (L3, the DuckDB payoff):** a `golden.csv` of verifiable facts
   per well-known paper, joined against stored analysis via DuckDB (`--extra analytics`). This is an
   *analysis-layer* measure — do **not** conflate it with synthesis trust.
