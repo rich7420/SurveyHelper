@@ -10,17 +10,22 @@ verified; this file carries what's still live. For the running system see
 
 ## Where we are
 
-**Phases 0–1 complete and verified live.** A fast literature-card plugin for OpenClaw:
-- Sync `survey()` → instant card (steps 0/1/3/7, no LLM) in ~1–2 s, DB-cached
-- Async worker enrichment → S2 `tldr` + references, with a **keyless arXiv-HTML reference
-  fallback** so the citation graph survives S2 being down
-- Postgres + pgvector store; cross-process rate limiter; `SKIP LOCKED` job queue with
-  deferred retry; 5 MCP tools; launchd-persistent services; live Claude-agent E2E
+**All 8 phases + the ambient-conversation foundation are built and verified live.**
+~3,000 LOC, 44 tests, 16 MCP tools, 3 always-on services, an installed OpenClaw hook plugin.
 
-**Honest framing:** today this is a *fast, resilient literature-lookup tool with clean
-sync/async plumbing*. The hard infrastructure risks are retired. The **intelligence layers
-(deep analysis, graph synthesis, personal memory, proactivity) are not built yet** — that is
-where the product value still lives.
+The full value chain runs end-to-end:
+> survey → instant card → background enrich → expand to a depth-2 graph → **synthesize**
+> (lineage / contradictions / open problems) → remember what you read & think → **semantic**
+> daily digest → **ambient recognition** (mention a paper in chat → the agent already knows it,
+> your state, and "2 hops from what you read", injected with no tool call).
+
+**Progress, honestly — the funnel:**
+`papers 1,347 → cards 66 → deep-analyzed 2 → syntheses 1`. The machinery exists and works; the
+**graph is still a skeleton** — breadth (edges) far exceeds depth (analyzed content). Proven
+capabilities are real (the BERT synthesis surfaced genuine contradictions for \$0.09; the hook
+injects graph context before the model runs), but most nodes are bare stubs. **Today the value
+is in the shape and the proven capabilities, not in how much of the graph has substance.** The
+next arc is depth + trust, not new breadth. See [`VISION.md`](VISION.md) for the deeper read.
 
 ## Architecture invariants (load-bearing — keep these true)
 
@@ -70,39 +75,64 @@ where the product value still lives.
 ambient conversation, trust/eval, and portability — is detailed in
 [`docs/development-roadmap.md`](docs/development-roadmap.md).
 
-## Open decisions (settle before the dependent phase)
+## Decisions now settled (were open)
 
-1. **Phase-2 LLM routing (blocks everything intelligent).** PaperQA2 needs a programmatic
-   chat-completions API, but Claude here is a subscription driven via `claude -p`. Options:
-   (a) a thin LiteLLM adapter over `claude -p`; (b) `claude-max-api-proxy` (localhost:3456);
-   (c) an Anthropic API key (cleanest, per-token cost). Note the 2026-06-15 subscription
-   `claude -p` billing change.
-2. **Embeddings source** for the personal layer (local ST vs OpenClaw `/v1/embeddings` if its
-   provider exposes embeddings) and the final `EMBED_DIM`.
-3. **Depth-2 cost guardrails** — calibrate real $/paper on the actual model before enabling
-   `expand` + `analyze` together (see risk below).
+1. **LLM routing → `claude -p` adapter.** `llm/claude_cli.py` runs `docker exec … claude -p
+   --output-format json` (tools disabled, usage/cost metered). Verified ~3.5 s/call. *(An
+   Anthropic API-key backend remains the portability upgrade — see next steps M4.)*
+2. **Embeddings → fastembed bge-small (384-dim, onnx, no torch).** `EMBED_DIM=384`; HNSW index
+   added; semantic similarity + proactive relevance verified.
+3. **Cost guardrails → daily circuit-breaker + cheap analyze model + calibration via
+   `usage_log`.** Pre-flight confirm before big expands is still TODO (M1).
 
-## Known risks & mitigations
+## Known risks & current state
 
-| Risk | State | Mitigation |
-|---|---|---|
-| **S2 reliability** (core value hung on a throttled free API) | mitigated | keyless arXiv-HTML ref fallback; S2 key would fully resolve (tldr + influence flags) |
-| **Cost landmine** — Opus × full-0–7 × depth-2 ≈ $200–350/survey, no caps set | latent | build cost control *with* Phase 2/4: calibration + pre-flight confirm + cheap `summary_llm` split |
-| **Auth fragility** — synthesized subscription credential, ~1 yr token, ToS-grey for `-p` | managed | documented in memory; API key is the robust alternative |
-| **Embeddings unvalidated** — no GPU (MPS only); dim/speed untested at graph scale | open | load-test when Phase 6 lands; consider a small fast model (bge-small 384) |
-| **No eval harness / cost tracking** — `usage_log` empty, quality unmeasured | open | wire before trusting Phase-2 output |
+| Risk | State |
+|---|---|
+| S2 reliability | **mitigated** — keyless arXiv-HTML ref fallback; S2 key would still upgrade tldr + influence flags |
+| Cost of deep analysis | **bounded** — daily budget breaker + haiku default (~\$0.36/paper full-text); pre-flight confirm still TODO |
+| Auth fragility | **managed** — synthesized long-lived credential; the robust fix is the API-key backend (M4) |
+| **Skeletal graph** (breadth ≫ depth) | **open** — synthesis is thin where nodes aren't analyzed → M1 selective depth |
+| **Unverified quality** | **open** — faithfulness self-grades; no golden set → M2 |
+| **Not portable** | **open** — generalops/subscription coupling → M4 |
 
-## Prioritized next steps
+## Concrete next steps
 
-1. **(cheap, high value)** Semantic Scholar API key → complete cards (tldr + influence-ranked
-   references) and working fuzzy-title search.
-2. **(headline feature)** Settle open decision #1, then **Phase 2** — grounded deep analysis,
-   built together with cost control (calibration + pre-flight confirm).
-3. **(the graph payoff)** **Phase 4–5** — `expand` to depth-2 then `synthesize` (lineage /
-   open problems / contradictions). This is the reason depth exists.
-4. **(parallel track, no LLM dependency)** turn on embeddings → **Phase 6–7** personal layer +
-   proactivity (the *memory* / *ambient* differentiators).
-5. **(quality)** integration tests for the card/enrich/dedup paths; eval harness; `usage_log`.
+Ordered to close the distance to [`VISION.md`](VISION.md) Horizon 1 (a *grounded, trustworthy*
+research memory). Detail + the OpenClaw-integration design live in
+[`docs/development-roadmap.md`](docs/development-roadmap.md).
+
+**M1 — Make synthesis substantive & auditable** *(highest leverage: amplify the one scarce capability)*
+- Selective deep-analysis of the **top-K most-influential** nodes during `expand` (budget-bounded),
+  so synthesis reduces over structured `key_components/key_numbers/limitations`, not just tldrs.
+- **Synthesis provenance:** link every lineage/contradiction/open-problem claim to its `paper_id`s.
+- *Gate:* a depth-2 `expand`+`synthesize` cites specific methods/numbers from references, each
+  claim drills to its source papers, within a stated \$ budget.
+
+**M2 — Make it trustworthy** *(stop shipping analysis we can't verify)*
+- A hand-checked **golden set** (~15–20 papers incl. the BERT/Ring/FlashAttention lines);
+  **independent faithfulness** (a *different* model, not self-grading); the DuckDB CSV-join eval
+  (`--extra analytics`).
+- *Gate:* a `pipeline_version` bump reports per-step agreement vs golden; faithfulness verdicts
+  come from a distinct model.
+
+**M3 — Finish the ambient loop** *(Theme A polish)*
+- `agent_turn_prepare`/`message send` **proactive push-back** when a background deepen/synthesis
+  finishes; **session memory** so a paper discussed today isn't re-surfaced by the digest.
+- *Gate:* completing a deepen surfaces a message to your channel without waiting for the heartbeat.
+
+**M4 — Make it portable** *(toy → tool)*
+- Pluggable **Anthropic API-key LLM backend** alongside `claude -p`; LLM retry/backoff (parity
+  with enrich); pre-flight cost confirm wired into the user flow.
+- *Gate:* `SURVEYHELPER_LLM_BACKEND=api` runs analyze/synthesize with no `generalops` dependency.
+
+**M5 — The understanding model** *(seed of Horizon 2 — "thinks with you")*
+- Track what *you* understand vs the field; surface the **delta** on recognize/synthesis
+  ("this rebuts what you marked understood last week").
+- *Gate:* recognizing a paper that conflicts with something you marked `understood` flags the tension.
+
+**Quick win (anytime):** a **Semantic Scholar API key** → complete cards (tldr + influence-ranked
+references) and working fuzzy-title search; no code change, just `SEMANTIC_SCHOLAR_API_KEY`.
 
 ## Note on historical design references
 
