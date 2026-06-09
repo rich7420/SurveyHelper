@@ -93,9 +93,13 @@ async def upsert(meta: PaperMeta, *, min_depth: int | None = None) -> int:
             else:
                 sets, args = [], []
                 for k in _PAPER_COLS:
-                    if vals[k] is not None:
-                        args.append(vals[k])
-                        sets.append(f"{k} = ${len(args)}")
+                    v = vals[k]
+                    # Skip empty incoming fields ([], "") as well as None — a reference-stub or
+                    # enrich upsert must not clobber authors/abstract a survey already fetched.
+                    if v is None or v == [] or v == "":
+                        continue
+                    args.append(v)
+                    sets.append(f"{k} = ${len(args)}")
                 if sets:
                     args.append(paper_id)
                     await conn.execute(
