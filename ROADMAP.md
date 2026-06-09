@@ -102,12 +102,12 @@ Ordered to close the distance to [`VISION.md`](VISION.md) Horizon 1 (a *grounded
 research memory). Detail + the OpenClaw-integration design live in
 [`docs/development-roadmap.md`](docs/development-roadmap.md).
 
-**M1 — Make synthesis substantive & auditable** *(highest leverage: amplify the one scarce capability)*
-- Selective deep-analysis of the **top-K most-influential** nodes during `expand` (budget-bounded),
-  so synthesis reduces over structured `key_components/key_numbers/limitations`, not just tldrs.
-- **Synthesis provenance:** link every lineage/contradiction/open-problem claim to its `paper_id`s.
-- *Gate:* a depth-2 `expand`+`synthesize` cites specific methods/numbers from references, each
-  claim drills to its source papers, within a stated \$ budget.
+**M1 — Make synthesis substantive & auditable** ✅ *done*
+- ✅ Selective deep-analysis of the **top-K most-influential** nodes during `expand`
+  (`deep_dive` tool, `budget.analyze_influential`), so synthesis gains structured material.
+- ✅ **Synthesis provenance:** every lineage/contradiction/open-problem claim cites its
+  `paper_id`s; `get_synthesis` returns a `paper_index` to resolve them. Verified on BERT —
+  contradictions drill to their exact sources (BERT vs ELMo/ULMFiT).
 
 **M2 — Make it trustworthy** *(stop shipping analysis we can't verify)*
 - A hand-checked **golden set** (~15–20 papers incl. the BERT/Ring/FlashAttention lines);
