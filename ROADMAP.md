@@ -91,10 +91,10 @@ ambient conversation, trust/eval, and portability — is detailed in
 |---|---|
 | S2 reliability | **mitigated** — keyless arXiv-HTML ref fallback; S2 key would still upgrade tldr + influence flags |
 | Cost of deep analysis | **bounded** — daily budget breaker + haiku default (~\$0.36/paper full-text); pre-flight confirm still TODO |
-| Auth fragility | **managed** — synthesized long-lived credential; the robust fix is the API-key backend (M4) |
+| Auth fragility | **resolved** — the API-key backend (M4) needs no synthesized credential; the `cli` subscription path remains optional |
 | **Skeletal graph** (breadth ≫ depth) | **open** — synthesis is thin where nodes aren't analyzed → M1 selective depth |
 | **Unverifiable synthesis** (the value *is* the risk) | **open** — self-graded groundedness ≠ correctness; relational claims have no single source; depth compounds analysis errors → M2 builds verifiability *into* synthesis (L2 spans + L4 abstention), VISION §5 |
-| **Not portable** | **open** — generalops/subscription coupling → M4 |
+| **Not portable** | **resolved** — `docker compose up -d` + an API key; no generalops/subscription coupling (M4) |
 
 ## Concrete next steps
 
@@ -149,10 +149,15 @@ bolt-on:
   finishes; **session memory** so a paper discussed today isn't re-surfaced by the digest.
 - *Gate:* completing a deepen surfaces a message to your channel without waiting for the heartbeat.
 
-**M4 — Make it portable** *(toy → tool)*
-- Pluggable **Anthropic API-key LLM backend** alongside `claude -p`; LLM retry/backoff (parity
-  with enrich); pre-flight cost confirm wired into the user flow.
-- *Gate:* `SURVEYHELPER_LLM_BACKEND=api` runs analyze/synthesize with no `generalops` dependency.
+**M4 — Make it portable** *(toy → tool)* — ✅ *core done*
+- ✅ Pluggable **Anthropic API-key LLM backend** alongside `claude -p` (`SURVEYHELPER_LLM_BACKEND=
+  api|cli|auto`); SDK retry/backoff built in; prompt caching shares one paper-text prefix across
+  analyze's 5 calls (~0.1x input after the first).
+- ✅ **One-command install**: `docker compose up -d` brings up pgvector (schema auto-applied) +
+  worker + MCP — `ANTHROPIC_API_KEY` is the only required input. Verified from scratch (16 tables,
+  `/healthz` ok). No `generalops`/subscription coupling on the compose path.
+- *Remaining:* pre-flight cost confirm in the user flow; parameterize the mac-native launchd paths
+  (the compose path already needs none).
 
 **M5 — The understanding model** *(seed of Horizon 2 — "thinks with you")*
 - Track what *you* understand vs the field; surface the **delta** on recognize/synthesis
