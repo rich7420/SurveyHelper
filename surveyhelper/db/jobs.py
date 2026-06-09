@@ -82,6 +82,16 @@ async def get(job_id: int) -> Optional[asyncpg.Record]:
     return await pool.fetchrow("SELECT * FROM research_jobs WHERE id = $1", job_id)
 
 
+async def count_unfinished(triggered_by: str, job_type: str) -> int:
+    """How many jobs of `job_type` sharing `triggered_by` are still pending/running.
+    Lets a deep_dive's follow-up synthesize wait for its sibling analyses to finish."""
+    pool = await get_pool()
+    return await pool.fetchval(
+        """SELECT count(*) FROM research_jobs
+           WHERE triggered_by = $1 AND type = $2 AND status IN ('pending','running')""",
+        triggered_by, job_type) or 0
+
+
 # ── frontier (resumable BFS, DECISIONS.md §D #6) ─────────────────────────────
 async def add_frontier(job_id: int, paper_id: int, depth: int, tier: str) -> None:
     pool = await get_pool()

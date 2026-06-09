@@ -90,6 +90,11 @@ async def run_expand(job: asyncpg.Record) -> dict[str, Any]:
                                    triggered_by=f"expand:{job_id}", priority=80)
                 queued_analysis += 1
         log.info("expand root=%s queued %d influential-node analyses", root, queued_analysis)
+        # Close the deep_dive loop: a follow-up synthesize that waits (in the worker) for these
+        # analyses to finish, so the reduce uses the freshly-deepened material.
+        await jobs.enqueue("synthesize", root_paper_id=root,
+                           triggered_by=f"expand:{job_id}", priority=90)
+        log.info("expand root=%s queued follow-up synthesize", root)
 
     capped = processed >= MAX_PAPERS_PER_JOB
     edges = await papers.count_references(root)

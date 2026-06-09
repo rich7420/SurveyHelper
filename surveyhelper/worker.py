@@ -25,6 +25,7 @@ Handler = Callable[[asyncpg.Record], Awaitable[None]]
 
 IDLE_SLEEP = 2.0          # seconds between empty polls
 MAX_ENRICH_ATTEMPTS = 8   # give up after this many deferred retries
+SYNTH_WAIT_MAX_ATTEMPTS = 20   # deep_dive synthesize waits ~20×45s for sibling analyses, then runs
 
 
 class RetryLater(Exception):
@@ -89,7 +90,19 @@ async def _handle_deepen(job: asyncpg.Record) -> None:
 
 
 async def _handle_synthesize(job: asyncpg.Record) -> None:
-    """Reduce a root's analyzed sub-graph into lineage/open-problems/contradictions (Phase 5)."""
+    """Reduce a root's analyzed sub-graph into lineage/open-problems/contradictions (Phase 5).
+
+    deep_dive enqueues this tagged 'expand:<id>' alongside its influential-node analyses; wait
+    (defer) until those siblings finish so the reduce uses the freshly-deepened material.
+    """
+    tb = job["triggered_by"] or ""
+    if tb.startswith("expand:") and (job["attempts"] or 0) < SYNTH_WAIT_MAX_ATTEMPTS:
+        pending = await jobs.count_unfinished(tb, "analyze")
+        if pending:
+            log.info("synthesize job %s waiting on %d sibling analyses (attempt %d)",
+                     job["id"], pending, (job["attempts"] or 0) + 1)
+            raise RetryLater(45)
+
     from .pipeline.synthesize import synthesize
     res = await synthesize(job["root_paper_id"], job_id=job["id"])
     log.info("synthesize job %s: %s", job["id"], res)
