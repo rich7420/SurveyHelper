@@ -150,9 +150,10 @@ bolt-on:
 - *Gate:* completing a deepen surfaces a message to your channel without waiting for the heartbeat.
 
 **M4 — Make it portable** *(toy → tool)* — ✅ *core done*
-- ✅ Pluggable **Anthropic API-key LLM backend** alongside `claude -p` (`SURVEYHELPER_LLM_BACKEND=
-  api|cli|auto`); SDK retry/backoff built in; prompt caching shares one paper-text prefix across
-  analyze's 5 calls (~0.1x input after the first).
+- ✅ **Multi-provider** pluggable LLM backend (`SURVEYHELPER_LLM_BACKEND=anthropic|openai|gemini|
+  cli|auto`) — set any one API key; `auto` picks the first present. SDK retry/backoff built in;
+  prompt caching shares one paper-text prefix across analyze's 5 calls. The pipeline's Claude
+  model is mapped to each provider's cheap/capable tier automatically.
 - ✅ **One-command install**: `docker compose up -d` brings up pgvector (schema auto-applied) +
   worker + MCP — `ANTHROPIC_API_KEY` is the only required input. Verified from scratch (16 tables,
   `/healthz` ok). No `generalops`/subscription coupling on the compose path.
