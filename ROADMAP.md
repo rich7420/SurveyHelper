@@ -168,6 +168,19 @@ bolt-on:
 **Quick win (anytime):** a **Semantic Scholar API key** → complete cards (tldr + influence-ranked
 references) and working fuzzy-title search; no code change, just `SEMANTIC_SCHOLAR_API_KEY`.
 
+## Post-v1 follow-ups (after the first public release)
+
+**Parquet analytics lane (at scale).** Postgres + pgvector stays the operational source of truth —
+lookups, graph traversal, and vector similarity all need its indexes, so operational data must NOT
+move to Parquet. But for the *analytics/eval lane* at scale, a **Postgres → Parquet snapshot export →
+DuckDB** path is the right on-ramp (and beats the live postgres-scanner `ATTACH`, which we cross-tested
+as slow + needing a runtime extension fetch). Where it wins once data is large: golden-set eval
+(join `analysis` against `golden.csv`), `usage_log` time-series cost analytics, and cold
+`paper_fulltext` archival (text compresses well in Parquet, keeping live Postgres lean).
+*Trigger:* build a small `export_parquet` tool only when (a) data is genuinely large (~10k+ papers /
+millions of usage rows) AND (b) there's an analytical workload that's slow on Postgres — premature
+before that.
+
 ## Note on historical design references
 
 Code comments and docs cite `plan §N` / `DECISIONS §X`. Those refer to the retired design
