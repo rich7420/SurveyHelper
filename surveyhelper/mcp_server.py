@@ -183,13 +183,18 @@ async def synthesize_graph(paper_id: int) -> dict[str, Any]:
 
 @mcp.tool()
 async def get_synthesis(paper_id: int) -> dict[str, Any]:
-    """Return the latest graph synthesis for a paper (lineage/open-problems/contradictions/map)."""
+    """Return the latest graph synthesis (lineage/open-problems/contradictions/map). Each claim
+    cites source paper ids; `paper_index` resolves them to titles so you can drill into them."""
     s = await syntheses.get_latest(str(paper_id))
     if s is None:
         return {"status": "none", "paper_id": paper_id}
+    pset = s["paper_set"] or []
+    paper_index = {p["paper_id"]: p["title"] for p in pset
+                   if isinstance(p, dict) and "paper_id" in p}
     return {"status": "synthesis", "paper_id": paper_id,
             "lineage": s["lineage"], "open_problems": s["open_problems"],
             "contradictions": s["contradictions"], "landscape": s["map"],
+            "paper_index": paper_index,
             "created_at": s["created_at"].isoformat()}
 
 

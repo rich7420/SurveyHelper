@@ -32,6 +32,13 @@ _SCHEMA = ('{"lineage": ["<how the core idea evolved across these papers, ordere
            '"landscape": {"clusters": ["<theme: representative papers>"], '
            '"key_nodes": ["<the most influential/central papers and why>"]}}')
 
+# Provenance-carrying schema: every claim cites the paper ids it draws from (B2).
+_SCHEMA_PROV = (
+    '{"lineage": [{"step": "<what this stage added>", "papers": [<id>, ...]}], '
+    '"open_problems": [{"problem": "<recurring/unsolved across the set>", "papers": [<id>, ...]}], '
+    '"contradictions": [{"claim": "<what conflicts and how>", "papers": [<id>, <id>]}], '
+    '"landscape": {"clusters": ["<theme: representative titles>"], "key_nodes": [<id>, ...]}}')
+
 
 def _extract_json(text: str) -> dict | None:
     m = re.search(r"\{.*\}", text, re.S)
@@ -53,7 +60,7 @@ async def _gather(root_id: int) -> tuple[Any, list[dict]]:
         a = await analysis.get(r["id"], config.PIPELINE_VERSION)
         if not a or not a["purpose"]:
             continue
-        item = {"title": (r["title"] or "")[:160], "year": r["year"],
+        item = {"id": r["id"], "title": (r["title"] or "")[:160], "year": r["year"],
                 "influential": bool(influential), "summary": a["purpose"][:300]}
         arch = (a["architecture"] or {}).get("data") if a["architecture"] else None
         lim = (a["limitations"] or {}).get("data") if a["limitations"] else None
@@ -78,16 +85,18 @@ async def synthesize(root_id: int, *, job_id: int | None = None) -> dict[str, An
         return {"synthesized": False, "reason": "daily_budget_reached"}
 
     payload = json.dumps(items, ensure_ascii=False)
-    prompt = (f"ROOT PAPER: {root['title']}\n\nPAPER SET (root + references), as JSON:\n{payload}\n\n"
-              f"Synthesize the landscape across this set. Return JSON ONLY matching:\n{_SCHEMA}")
+    prompt = (f"ROOT PAPER: {root['title']}\n\nPAPER SET (root + references), as JSON — each "
+              f"paper has an integer `id`:\n{payload}\n\nSynthesize the landscape across this "
+              f"set. Cite the `id`s each claim draws from. Return JSON ONLY matching:\n{_SCHEMA_PROV}")
     c = await complete(prompt, model=config.LLM_MODEL, system=_SYSTEM)
     await usage.add(job_id=job_id, source="llm", calls=1,
                     tokens=c.input_tokens + c.output_tokens, cost_usd=c.cost_usd)
     data = _extract_json(c.text) or {}
 
+    # paper_set carries id->title so cited ids in claims are resolvable (B2 provenance).
     sid = await syntheses.save(
         scope="paper", root_or_topic=str(root_id),
-        paper_set=[{"paper_id": root_id, "n": len(items)}],
+        paper_set=[{"paper_id": it["id"], "title": it["title"]} for it in items],
         lineage=data.get("lineage"), open_problems=data.get("open_problems"),
         contradictions=data.get("contradictions"), map=data.get("landscape"),
         pipeline_version=config.PIPELINE_VERSION,
