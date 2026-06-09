@@ -58,8 +58,8 @@ openclaw plugins install clawhub:openclaw-surveyhelper
 **When the plugin changes:** rebuild and commit `dist/index.js`, bump the version in both
 `package.json` and `openclaw.plugin.json`, then re-run `clawhub package publish`.
 
-> Until the first ClawHub publish, the plugin installs from a clone via
-> `bash openclaw/plugin/install-plugin.sh` (this works for everyone as of v0.1.1).
+> The plugin is published to ClawHub (`openclaw plugins install clawhub:openclaw-surveyhelper`);
+> installing from a clone via `bash openclaw/plugin/install-plugin.sh` also works.
 
 ## Pre-release checklist
 - [ ] `master` CI green; `uv run pytest -q` passes locally
