@@ -8,3 +8,7 @@ dist/
 build/
 *.egg-info/
 .uv/
+
+# the plugin ships a prebuilt entry (no build step in install) — keep it tracked
+!openclaw/plugin/surveyhelper/dist/
+!openclaw/plugin/surveyhelper/dist/index.js
