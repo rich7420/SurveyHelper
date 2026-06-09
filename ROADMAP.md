@@ -62,9 +62,14 @@ where the product value still lives.
 | 3 | MCP + OpenClaw (sync card fast, deep async) | ✅ done (card path) |
 | 4 | **`expand`** — depth-2 BFS, dedup, budget, resumable frontier | ✅ done (no-LLM) |
 | 5 | `synthesize` — lineage / open-problems / contradictions / landscape map | ✅ done |
-| 6 | Personal layer — `paper_user_state`, corrections overlay, `interests`, personal dedup | ✅ done (embeddings pending) |
-| 7 | Proactivity — daily `proactive_scan` + digest notifications | ✅ done (keyword; embedding relevance pending) |
+| 6 | Personal layer — state, corrections, interests, personal dedup, **embeddings + similarity** | ✅ done |
+| 7 | Proactivity — daily `proactive_scan` + digest, **semantic relevance filter** | ✅ done |
 | 8 | Eval — golden set + regression run + cost dashboard | ◻ partial (faithfulness self-check + `usage_log`/`cost_summary`; golden set TODO) |
+
+**All 8 phases implemented.** Remaining work is refinement: a hand-labeled golden set for
+Phase 8 (the faithfulness self-check is a cheap proxy), selective deep-analysis during expand
+(so synthesis has richer material without analyzing every node), and an Anthropic API key as a
+robust alternative to the `claude -p` subscription path.
 
 ## Open decisions (settle before the dependent phase)
 
