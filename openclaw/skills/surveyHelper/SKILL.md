@@ -40,8 +40,18 @@ Extract an identifier from the message and pass it as `identifier`:
 ## Other tools
 - `get_paper(paper_id)` — re-show a stored card (use to pick up enriched tldr/references).
 - `get_graph(paper_id)` — the paper plus its backward references (most-influential first).
+- `deep_dive(paper_id)` — expand + deep-analyze the most-influential references, then synthesize.
+- `synthesize_graph(paper_id)` / `get_synthesis(paper_id)` — lineage / contradictions / open
+  problems across the paper's sub-graph.
 - `job_status(job_id)` — check a background job.
 - `pending_notifications()` — used by the heartbeat (see HEARTBEAT.md), not usually by hand.
+
+## Synthesis trust (important)
+`get_synthesis` separates **`contradictions`** (verified — grounded in two-sided verbatim quotes
+from the actual papers) from **`tentative_tensions`** (could NOT be verified from the source).
+**Assert only the verified `contradictions` as fact.** Present `tentative_tensions` as
+"possible, not confirmed", and never state them as established disagreements. Honesty about what
+isn't verified is the point.
 
 ## Personal memory (it remembers *you*)
 - `mark_paper(paper_id, state, why)` — when the user has read / understood / dismissed a paper,

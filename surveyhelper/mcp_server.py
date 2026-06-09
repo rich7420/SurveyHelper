@@ -206,14 +206,18 @@ async def get_synthesis(paper_id: int) -> dict[str, Any]:
     paper_index = {p["paper_id"]: p["title"] for p in pset
                    if isinstance(p, dict) and "paper_id" in p}
     contra = s["contradictions"] or []
-    verified = sum(1 for c in contra if isinstance(c, dict) and c.get("status") == "verified")
+    # Only *assert* verified contradictions (grounded in two-sided source quotes); the rest are
+    # demoted to clearly-labelled tentative tensions the agent should not state as fact.
+    verified = [c for c in contra if isinstance(c, dict) and c.get("status") == "verified"]
+    tentative = [c for c in contra if not (isinstance(c, dict) and c.get("status") == "verified")]
     return {"status": "synthesis", "paper_id": paper_id,
             "lineage": s["lineage"], "open_problems": s["open_problems"],
-            "contradictions": contra, "landscape": s["map"],
-            "paper_index": paper_index,
-            "trust": {"contradictions_verified": verified,
-                      "contradictions_tentative": len(contra) - verified,
-                      "note": "tentative claims lack two-sided evidence in stored content — treat cautiously"},
+            "contradictions": verified,                 # source-verified; safe to assert
+            "tentative_tensions": tentative,            # unverified; present as "possible, not confirmed"
+            "landscape": s["map"], "paper_index": paper_index,
+            "trust": {"verified": len(verified), "tentative": len(tentative),
+                      "guidance": "Assert only `contradictions` (grounded in two-sided source "
+                                  "quotes). Present `tentative_tensions` as possible-not-confirmed."},
             "created_at": s["created_at"].isoformat()}
 
 
