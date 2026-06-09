@@ -121,10 +121,13 @@ bolt-on:
   section-3.1 sentence but found no ELMo counter-sentence — exposing that many "contradictions" were
   the synthesizer's **one-sided framing**, not documented disagreements.* This is the system reading
   the source, not summaries.
-- **M2a-next — the iterative loop ("反覆查證"):** feed verification back into synthesis — only
-  *assert* verified contradictions, demote the rest; and make the **synthesizer itself conservative**
-  (claim a contradiction only when both sides are documented). Optionally re-search other sections
-  when one side is missing before abstaining.
+- **M2a — the iterative loop ("反覆查證")** ✅ *done* — the synthesizer is now **conservative**
+  (proposes a contradiction only when both sides are documented), and `get_synthesis` **separates**
+  verified `contradictions` (assert) from `tentative_tensions` (demote); the SKILL tells the agent to
+  assert only verified. *Live on BERT: 5 one-sided/0-verified → 2/1-verified with a real ELMo quote;
+  and through the agent — it asserted the verified one and said the other "shouldn't be stated as
+  fact."* The north star ("honest about what it isn't sure of") is realized end-to-end.
+  *(Optional further: re-search other sections before abstaining; this is the diminishing-returns tail.)*
 - **M2b — Golden-set fact-coverage (L3, the DuckDB payoff):** a `golden.csv` of verifiable facts
   per well-known paper, joined against stored analysis via DuckDB (`--extra analytics`). This is an
   *analysis-layer* measure — do **not** conflate it with synthesis trust.
