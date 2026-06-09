@@ -13,8 +13,8 @@ docker exec -u root "$CONTAINER" rm -rf /tmp/shp 2>/dev/null || true
 docker cp "$HERE/surveyhelper" "$CONTAINER":/tmp/shp
 docker exec -u root "$CONTAINER" rm -f /tmp/shp/index.ts || true   # install the compiled entry only
 
-echo "==> Installing"
-docker exec "$CONTAINER" sh -lc "$CLI plugins install /tmp/shp"
+echo "==> Installing (force-replace if present)"
+docker exec "$CONTAINER" sh -lc "$CLI plugins install /tmp/shp --force"
 
 echo "==> Restarting gateway to load the plugin"
 docker restart "$CONTAINER" >/dev/null
