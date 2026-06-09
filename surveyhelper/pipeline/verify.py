@@ -17,7 +17,7 @@ from typing import Any
 from .. import config
 from ..db import usage
 from ..fulltext import get_fulltext
-from ..llm.claude_cli import complete
+from ..llm import complete
 from ..logging_setup import get
 
 log = get("verify")

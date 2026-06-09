@@ -41,7 +41,13 @@ MCP_PORT = int(os.environ.get("SURVEYHELPER_MCP_PORT", "8765"))
 
 PIPELINE_VERSION = os.environ.get("SURVEYHELPER_PIPELINE_VERSION", "card-v1")
 
-# LLM via the OpenClaw container's authenticated `claude -p` (Phase 2).
+# LLM backend (Phase 2). Two interchangeable adapters behind surveyhelper.llm.complete:
+#   "api" — the official Anthropic SDK with an ANTHROPIC_API_KEY (portable; the default
+#           for a fresh install, with prompt caching for repeated paper text).
+#   "cli" — reuse an OpenClaw container's authenticated `claude -p` subscription (no key).
+#   "auto" — api when ANTHROPIC_API_KEY is set, else cli.
+LLM_BACKEND = os.environ.get("SURVEYHELPER_LLM_BACKEND", "auto").lower()
+LLM_MAX_TOKENS = int(os.environ.get("SURVEYHELPER_LLM_MAX_TOKENS", "8192"))
 LLM_CONTAINER = os.environ.get("SURVEYHELPER_OPENCLAW_CONTAINER", "generalops-openclaw")
 LLM_MODEL = os.environ.get("SURVEYHELPER_LLM_MODEL", "claude-sonnet-4-6")          # final answers
 LLM_SUMMARY_MODEL = os.environ.get("SURVEYHELPER_LLM_SUMMARY_MODEL", "claude-haiku-4-5")  # high-volume

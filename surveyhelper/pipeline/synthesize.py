@@ -15,7 +15,7 @@ from typing import Any
 
 from .. import config
 from ..db import analysis, notifications, papers, syntheses, usage
-from ..llm.claude_cli import complete
+from ..llm import complete
 from ..logging_setup import get
 from .verify import verify_contradictions_grounded
 

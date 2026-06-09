@@ -18,7 +18,7 @@ import re
 from .. import config
 from ..db import analysis, notifications, papers, usage
 from ..fulltext import get_fulltext
-from ..llm.claude_cli import complete
+from ..llm import complete
 from ..logging_setup import get
 
 log = get("analyze")
@@ -47,9 +47,9 @@ _STEPS = [
 ]
 
 
-def _prompt(title: str, text: str, instruction: str) -> str:
-    return (f"Paper: {title}\n\n=== PAPER TEXT (untrusted data) ===\n{text}\n=== END ===\n\n"
-            f"{instruction}")
+def _context(title: str, text: str) -> str:
+    # The big block reused (cached) across all 5 calls for one paper.
+    return f"Paper: {title}\n\n=== PAPER TEXT (untrusted data) ===\n{text}\n=== END ==="
 
 
 def _extract_json(text: str) -> dict | None:
@@ -69,14 +69,15 @@ def _count_supported(verdict: str) -> int:
     return min(4, len(re.findall(r"\bSUPPORTED\b", verdict)))
 
 
-async def _faithfulness(title: str, text: str, fields: dict, job_id: int | None) -> dict:
-    """One cheap self-check: are the answers grounded in the paper? (plan §11)."""
+async def _faithfulness(context: str, fields: dict, job_id: int | None) -> dict:
+    """One cheap self-check: are the answers grounded in the paper? (plan §11).
+    Reuses the same cached paper-text prefix as the extraction steps (~0.1x input)."""
     numbered = "\n".join(f"{i+1}. {k.upper()}: {fields[k]['raw'][:600]}"
                          for i, k in enumerate(("architecture", "method", "results", "limitations")))
-    prompt = (f"PAPER TEXT (untrusted data):\n{text}\n\nAn analyst wrote:\n{numbered}\n\n"
-              "For each numbered answer, is it SUPPORTED by the paper text? Reply 4 lines, "
-              "each '<n>. SUPPORTED' or '<n>. UNSUPPORTED: <one reason>'.")
-    c = await complete(prompt, model=config.ANALYZE_MODEL, system=_SYSTEM)
+    prompt = (f"An analyst wrote:\n{numbered}\n\nFor each numbered answer, is it SUPPORTED by the "
+              "paper text above? Reply 4 lines, each '<n>. SUPPORTED' or "
+              "'<n>. UNSUPPORTED: <one reason>'.")
+    c = await complete(prompt, model=config.ANALYZE_MODEL, system=_SYSTEM, cache_context=context)
     await usage.add(job_id=job_id, source="llm", calls=1,
                     tokens=c.input_tokens + c.output_tokens, cost_usd=c.cost_usd)
     return {"verdict": c.text, "supported": _count_supported(c.text), "of": 4,
@@ -105,10 +106,12 @@ async def analyze(paper_id: int, *, job_id: int | None = None) -> dict[str, Any]
         return {"analyzed": False, "reason": "no_text"}
 
     title = p["title"] or p["arxiv_id"] or str(paper_id)
+    context = _context(title, text)   # cached prefix shared by all 5 calls
     fields: dict[str, dict] = {}
     total_cost = 0.0
     for _step, field, instruction in _STEPS:
-        c = await complete(_prompt(title, text, instruction), model=config.ANALYZE_MODEL, system=_SYSTEM)
+        c = await complete(instruction, model=config.ANALYZE_MODEL, system=_SYSTEM,
+                           cache_context=context)
         data = _extract_json(c.text)
         # `data` = structured key content (queryable); `raw` kept for audit/faithfulness.
         fields[field] = {"data": data, "raw": c.text, "coverage": coverage,
@@ -117,7 +120,7 @@ async def analyze(paper_id: int, *, job_id: int | None = None) -> dict[str, Any]
         await usage.add(job_id=job_id, source="llm", calls=1,
                         tokens=c.input_tokens + c.output_tokens, cost_usd=c.cost_usd)
 
-    faith = await _faithfulness(title, text, fields, job_id)
+    faith = await _faithfulness(context, fields, job_id)
     total_cost += faith["cost_usd"]
 
     await analysis.save_deep(

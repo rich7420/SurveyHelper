@@ -15,10 +15,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-from dataclasses import dataclass
 
 from .. import config
 from ..logging_setup import get
+from .base import Completion, LLMError
 
 log = get("llm")
 
@@ -26,22 +26,11 @@ log = get("llm")
 _DISALLOWED = "Bash Read Edit Write WebSearch WebFetch Glob Grep NotebookEdit Task"
 
 
-@dataclass
-class Completion:
-    text: str
-    input_tokens: int
-    output_tokens: int
-    cost_usd: float
-    model: str
-
-
-class LLMError(RuntimeError):
-    pass
-
-
-async def complete(prompt: str, *, model: str | None = None,
-                   system: str | None = None, timeout: float = 180.0) -> Completion:
+async def complete(prompt: str, *, model: str | None = None, system: str | None = None,
+                   timeout: float = 180.0, cache_context: str | None = None) -> Completion:
     model = model or config.LLM_SUMMARY_MODEL
+    if cache_context:   # no API-level cache here; just prepend the shared block
+        prompt = f"{cache_context}\n\n{prompt}"
     args = [
         "docker", "exec", "-i", config.LLM_CONTAINER,
         "claude", "-p", "--output-format", "json",

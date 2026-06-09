@@ -13,6 +13,7 @@ dependencies = [
     "pymupdf>=1.24", # PDF full-text for pre-HTML papers
     "fastembed>=0.3", # local embeddings (onnx, no torch) — 384d bge-small
     "starlette>=1.2.1",
+    "anthropic>=0.69", # portable LLM backend (API key); the `cli` backend needs no key
 ]
 
 [project.optional-dependencies]
