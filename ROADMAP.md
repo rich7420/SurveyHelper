@@ -114,6 +114,12 @@ The live `2/4 faithful` signal showed self-graded groundedness is weak, and synt
 inference with no single source) is the hardest thing to trust. Climb the trust ladder
 (L0 self-graded → L2 evidence spans → L4 abstention) where it matters — *in synthesis*, not as a
 bolt-on:
+- **M2a — Mechanically-proven verification (L2 made real)** ✅ *done* — "verified" is no longer the
+  verifier's say-so: its cited quotes are **string-matched (n-gram, extraction-noise tolerant) against
+  the fetched source**, and survive only if verbatim AND two-sided. *Found and fixed real verification
+  theater — the verifier had been paraphrasing; with a verbatim-demand prompt it now copies real spans,
+  yielding 2 mechanically-confirmed BERT contradictions (e.g. "we added a randomly initialized BiLSTM
+  on top. This does significantly hurt…").* Trust is now a program-checked fact, not LLM consensus.
 - **M2a — Evidence + abstention, grounded in source (L1+L2+L4)** ✅ *done* — a cross-model verifier
   (haiku vs the sonnet synthesizer) now **fetches the cited papers' full text** and must quote a
   verbatim sentence from EACH side; one-sided or absent → **`tentative`** with the reason;
