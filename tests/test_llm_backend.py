@@ -38,21 +38,32 @@ def test_unknown_model_falls_back_to_sonnet_price():
     assert abs(cost - 3.0) < 1e-9
 
 
-def test_backend_auto_selects_api_when_key_present(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+def _reload_backend(monkeypatch, backend, **keys):
+    for k in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    for k, v in keys.items():
+        monkeypatch.setenv(k, v)
     import surveyhelper.config as cfg
-    monkeypatch.setattr(cfg, "LLM_BACKEND", "auto")
+    monkeypatch.setattr(cfg, "LLM_BACKEND", backend)
     import importlib
     import surveyhelper.llm as llm
     importlib.reload(llm)
-    assert llm.BACKEND == "api"
+    return llm.BACKEND
 
 
-def test_backend_auto_selects_cli_without_key(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    import surveyhelper.config as cfg
-    monkeypatch.setattr(cfg, "LLM_BACKEND", "auto")
-    import importlib
-    import surveyhelper.llm as llm
-    importlib.reload(llm)
-    assert llm.BACKEND == "cli"
+def test_auto_prefers_anthropic(monkeypatch):
+    assert _reload_backend(monkeypatch, "auto", ANTHROPIC_API_KEY="x") == "anthropic"
+
+
+def test_auto_falls_to_openai_then_gemini(monkeypatch):
+    assert _reload_backend(monkeypatch, "auto", OPENAI_API_KEY="x") == "openai"
+    assert _reload_backend(monkeypatch, "auto", GEMINI_API_KEY="x") == "gemini"
+    assert _reload_backend(monkeypatch, "auto", GOOGLE_API_KEY="x") == "gemini"
+
+
+def test_auto_falls_to_cli_without_any_key(monkeypatch):
+    assert _reload_backend(monkeypatch, "auto") == "cli"
+
+
+def test_api_alias_is_anthropic(monkeypatch):
+    assert _reload_backend(monkeypatch, "api", ANTHROPIC_API_KEY="x") == "anthropic"

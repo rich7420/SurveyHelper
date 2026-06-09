@@ -14,6 +14,8 @@ dependencies = [
     "fastembed>=0.3", # local embeddings (onnx, no torch) — 384d bge-small
     "starlette>=1.2.1",
     "anthropic>=0.69", # portable LLM backend (API key); the `cli` backend needs no key
+    "openai>=1.40", # optional LLM backend (SURVEYHELPER_LLM_BACKEND=openai)
+    "google-genai>=0.3", # optional LLM backend (SURVEYHELPER_LLM_BACKEND=gemini)
 ]
 
 [project.optional-dependencies]
