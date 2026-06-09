@@ -7,6 +7,19 @@ A local-first research companion. It runs as an [MCP](https://modelcontextprotoc
 MCP agent can use it) with an optional [OpenClaw](https://github.com/openclaw/openclaw) ambient
 plugin. Your papers, analyses, and notes never leave your machine.
 
+```mermaid
+flowchart LR
+    U([You mention a paper]) --> M[MCP server]
+    M --> C["Instant card<br/>purpose · references · code"]
+    M -. enqueue .-> W[Worker]
+    W --> A[Deep grounded analysis]
+    W --> S["Citation-graph synthesis<br/>verbatim-verified contradictions"]
+    C --> DB[("Postgres + pgvector<br/>your local memory")]
+    A --> DB
+    S --> DB
+    DB --> R[Ambient recall + proactive surfacing]
+```
+
 ## What you get
 
 - **Instant cards** — give it an arXiv id or title and get the paper's purpose, references, and code
@@ -44,11 +57,12 @@ your first survey (~5 minutes).
 Make it *ambient* — it recognizes a paper you mention in chat and injects what your graph knows:
 
 ```bash
-bash openclaw/install.sh                 # register the MCP server + skill
-bash openclaw/plugin/install-plugin.sh   # install the ambient-recognition hook
+bash openclaw/install.sh                              # register the MCP server + skill
+openclaw plugins install clawhub:openclaw-surveyhelper   # the ambient-recognition hook (from ClawHub)
 ```
 
-The MCP server is a standard endpoint, so it works with Claude Desktop and other MCP clients too.
+(Or install the hook from a clone with `bash openclaw/plugin/install-plugin.sh`.) The MCP server is
+a standard endpoint, so it also works with Claude Desktop and other MCP clients.
 
 ## How it works
 
