@@ -42,6 +42,9 @@ grounded steps (2/4/5/6 via PaperQA2) are Phase 2.
 ### MCP tools
 `survey` · `get_paper` · `get_graph` · `job_status` · `pending_notifications`
 
+> **New here?** The [**Getting Started guide**](docs/GETTING_STARTED.md) walks you from zero to
+> your first survey in ~5 minutes.
+
 ## Quick start (Docker — the whole stack in one command)
 
 ```bash
