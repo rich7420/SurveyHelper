@@ -30,6 +30,7 @@ surveyhelper-mcp = "surveyhelper.mcp_server:main"
 surveyhelper-scan = "surveyhelper.scan:main"
 surveyhelper-scheduler = "surveyhelper.scheduler:main"
 surveyhelper-verify = "surveyhelper.selftest:main"
+surveyhelper-backfill-authors = "surveyhelper.backfill_authors:main"
 
 [dependency-groups]
 dev = [
