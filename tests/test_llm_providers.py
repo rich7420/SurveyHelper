@@ -26,15 +26,15 @@ def test_gemini_tier_mapping():
 def test_openai_cost_with_cache():
     u = _Obj(prompt_tokens=1_000_000, completion_tokens=0,
              prompt_tokens_details=_Obj(cached_tokens=1_000_000))
-    pin, pout, cost = openai_api._cost("gpt-4o-mini", u)
+    pin, pout, cost = openai_api._cost("gpt-5.4-mini", u)
     assert pin == 1_000_000 and pout == 0
-    assert abs(cost - 0.15 * 0.5) < 1e-9          # all-cached input bills at 0.5x
+    assert abs(cost - 0.75 * 0.1) < 1e-9          # all-cached input bills at ~0.1x
 
 
 def test_openai_cost_plain():
     u = _Obj(prompt_tokens=0, completion_tokens=1_000_000, prompt_tokens_details=None)
-    _, _, cost = openai_api._cost("gpt-4o", u)
-    assert abs(cost - 10.0) < 1e-9                 # gpt-4o output $10/1M
+    _, _, cost = openai_api._cost("gpt-5.4", u)
+    assert abs(cost - 15.0) < 1e-9                 # gpt-5.4 output $15/1M
 
 
 def test_gemini_cost_with_cache():

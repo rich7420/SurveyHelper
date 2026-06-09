@@ -14,14 +14,14 @@ from .base import Completion, LLMError
 
 log = get("llm.openai")
 
-# (input, output) USD per 1M tokens — approximate; override the model via env if tiers change.
+# (input, output) USD per 1M tokens. Override the model via env if tiers/prices change.
 _PRICES: dict[str, tuple[float, float]] = {
-    "gpt-4o": (2.5, 10.0), "gpt-4o-mini": (0.15, 0.60),
-    "gpt-4.1": (2.0, 8.0), "gpt-4.1-mini": (0.40, 1.60),
-    "gpt-5": (1.25, 10.0), "gpt-5-mini": (0.25, 2.0),
+    "gpt-5.5": (5.0, 30.0), "gpt-5.5-pro": (30.0, 180.0),
+    "gpt-5.4": (2.5, 15.0), "gpt-5.4-mini": (0.75, 4.50), "gpt-5.4-nano": (0.20, 1.25),
+    "gpt-4o": (2.5, 10.0), "gpt-4o-mini": (0.15, 0.60),   # legacy, override-friendly
 }
-_DEFAULT_PRICE = (2.5, 10.0)
-_CACHED_DISCOUNT = 0.5   # cached prompt tokens bill at ~0.5x input
+_DEFAULT_PRICE = (2.5, 15.0)
+_CACHED_DISCOUNT = 0.1   # cached prompt tokens bill at ~0.1x input (gpt-5.x)
 
 _client = None
 

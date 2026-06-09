@@ -15,8 +15,8 @@ log = get("llm.gemini")
 
 # (input, output) USD per 1M tokens — approximate; override the model via env if tiers change.
 _PRICES: dict[str, tuple[float, float]] = {
-    "gemini-3.5-flash": (0.30, 2.50), "gemini-3.5-pro": (1.25, 10.0),
-    "gemini-2.5-flash": (0.30, 2.50), "gemini-2.5-pro": (1.25, 10.0),
+    "gemini-3.5-flash": (0.30, 2.50), "gemini-3.1-pro": (1.25, 10.0),
+    "gemini-2.5-pro": (1.25, 10.0), "gemini-2.5-flash": (0.30, 2.50),
     "gemini-2.0-flash": (0.10, 0.40),
 }
 _DEFAULT_PRICE = (0.30, 2.50)

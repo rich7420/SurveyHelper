@@ -55,10 +55,10 @@ LLM_CONTAINER = os.environ.get("SURVEYHELPER_OPENCLAW_CONTAINER", "generalops-op
 LLM_MODEL = os.environ.get("SURVEYHELPER_LLM_MODEL", "claude-sonnet-4-6")          # final answers
 LLM_SUMMARY_MODEL = os.environ.get("SURVEYHELPER_LLM_SUMMARY_MODEL", "claude-haiku-4-5")  # high-volume
 # Per-provider model tiers (overridable; set these to current IDs for your account).
-OPENAI_MODEL = os.environ.get("SURVEYHELPER_OPENAI_MODEL", "gpt-4o")
-OPENAI_SUMMARY_MODEL = os.environ.get("SURVEYHELPER_OPENAI_SUMMARY_MODEL", "gpt-4o-mini")
-GEMINI_MODEL = os.environ.get("SURVEYHELPER_GEMINI_MODEL", "gemini-3.5-pro")
-GEMINI_SUMMARY_MODEL = os.environ.get("SURVEYHELPER_GEMINI_SUMMARY_MODEL", "gemini-3.5-flash")
+OPENAI_MODEL = os.environ.get("SURVEYHELPER_OPENAI_MODEL", "gpt-5.4")          # flagship gpt-5.5 to override
+OPENAI_SUMMARY_MODEL = os.environ.get("SURVEYHELPER_OPENAI_SUMMARY_MODEL", "gpt-5.4-mini")
+GEMINI_MODEL = os.environ.get("SURVEYHELPER_GEMINI_MODEL", "gemini-3.5-flash")  # current flagship
+GEMINI_SUMMARY_MODEL = os.environ.get("SURVEYHELPER_GEMINI_SUMMARY_MODEL", "gemini-2.5-flash")
 # Deep analysis defaults to the cheap model (extraction, high-volume); raise per taste.
 ANALYZE_MODEL = os.environ.get("SURVEYHELPER_ANALYZE_MODEL", "claude-haiku-4-5")
 # Independent verifier for synthesis contradictions (cross-model from the sonnet synthesizer).
