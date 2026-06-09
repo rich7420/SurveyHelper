@@ -114,10 +114,12 @@ The live `2/4 faithful` signal showed self-graded groundedness is weak, and synt
 inference with no single source) is the hardest thing to trust. Climb the trust ladder
 (L0 self-graded → L2 evidence spans → L4 abstention) where it matters — *in synthesis*, not as a
 bolt-on:
-- **M2a — Evidence-span grounding + abstention (L2 + L4):** for each contradiction, the verifier
-  finds the *two-sided* evidence spans in the cited papers; if it can't, the claim is **tentative**,
-  not asserted. Provenance graduates from paper_ids → spans. *(Different verifier model = a useful
-  lower rung, L1, but not the destination — correlated hallucination remains.)*
+- **M2a — Evidence + abstention (L1+L4)** ✅ *done* — a cross-model verifier (haiku vs the sonnet
+  synthesizer) checks each contradiction for two-sided evidence in the cited papers' stored content;
+  unverifiable claims are downgraded to **`tentative`** with the missing-evidence reason;
+  `get_synthesis` surfaces a trust summary. *Live on BERT: 0/5 verified → all honestly tentative,
+  replacing confidently-wrong with honestly-uncertain.* **Next within M2a:** true L2 — verify against
+  stored **full-text spans** (not just summaries), so well-grounded contradictions can actually verify.
 - **M2b — Golden-set fact-coverage (L3, the DuckDB payoff):** a `golden.csv` of verifiable facts
   per well-known paper, joined against stored analysis via DuckDB (`--extra analytics`). This is an
   *analysis-layer* measure — do **not** conflate it with synthesis trust.
