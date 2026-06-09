@@ -36,7 +36,7 @@ async def _amain() -> int:
     refs = c.get("references")
     n_refs = len(refs) if isinstance(refs, list) else (refs or c.get("reference_count") or 0)
     print(f"  ✓ title:      {c.get('title')}")
-    print(f"  ✓ purpose:    {(c.get('purpose') or c.get('tldr') or '—')[:110]}")
+    print(f"  ✓ purpose:    {(c.get('purpose') or c.get('tldr') or c.get('summary') or '—')[:110]}")
     print(f"  ✓ references: {n_refs} tracked")
     print("\n✓ surveyHelper is working.\n")
     return 0
