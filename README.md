@@ -4,9 +4,10 @@ A local research companion + **OpenClaw plugin**. Mention a paper in chat and it
 it, runs a structured analysis, walks the citation graph, synthesizes what the graph means,
 remembers what *you* care about, and proactively surfaces new work — all stored locally.
 
-See [`ROADMAP.md`](ROADMAP.md) for status, direction, and the locked decisions. Operational
-detail lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
-[`docs/OPERATIONS.md`](docs/OPERATIONS.md).
+See [`VISION.md`](VISION.md) for what this is and where it's going, [`ROADMAP.md`](ROADMAP.md)
+for status + locked decisions, and the next-arc plan in
+[`docs/development-roadmap.md`](docs/development-roadmap.md). Operational detail lives in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 ## Architecture (plan §3)
 
