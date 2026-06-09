@@ -54,6 +54,12 @@ cost" is actually realized.
 
 ## Theme A — Graph-aware ambient conversation ⭐ (headline)
 
+> **Status: foundation built & verified live.** A1 (recognize + prompt injection via the
+> `before_prompt_build` hook plugin) and A2 (background `deepen-on-mention`) work end-to-end —
+> mentioning an in-graph paper makes the agent surface what we know + connections with no tool
+> round-trip. Remaining: A3 graph-distance connections, A4 session memory, and proactive
+> `message send` push-back on deepen completion.
+
 *"The graph reacts to what you're discussing."* Today the system acts on explicit commands
 (`survey X`) and a daily scan. This theme adds a third, **conversational** trigger tier: when
 a paper already in the graph (or near it) comes up in chat, surface what we know and quietly
