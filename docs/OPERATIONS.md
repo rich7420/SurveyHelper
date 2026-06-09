@@ -65,4 +65,31 @@ are always fast. Title search also needs S2.
 
 ## Config
 `.env` (see `.env.example`). Phase 0–1 needs no keys; optional: `SEMANTIC_SCHOLAR_API_KEY`,
-`GITHUB_TOKEN`, `SURVEYHELPER_CONTACT_EMAIL`. Storage DSN: `SURVEYHELPER_DSN`.
+`GITHUB_TOKEN`, `SURVEYHELPER_CONTACT_EMAIL`. Storage DSN: `SURVEYHELPER_DSN`. LLM backend +
+provider keys: `SURVEYHELPER_LLM_BACKEND` (`anthropic|openai|gemini|cli|auto`) and the matching
+`*_API_KEY`. The boot **preflight** logs the resolved backend/models and fails fast (one-line fix)
+if the DB is unreachable.
+
+## Upgrades & code changes
+The schema is **idempotent and re-applied on every boot** (`db.apply_schema`), so pulling new code
+that adds tables never breaks an existing install — no manual migration step.
+
+**Code changes require restarting the long-running services** — the worker, MCP server, and
+scheduler load the code at process start. After editing/pulling:
+- launchd (native): `launchctl kickstart -k gui/$(id -u)/com.surveyhelper.{worker,mcp}`
+- Docker: `docker compose up -d --build`
+
+Forgetting this means an old worker keeps running stale logic (e.g. it can re-introduce a bug a new
+commit fixed). The preflight banner in the logs shows which config a running service loaded.
+
+## OpenClaw ambient plugin (optional)
+The MCP server is a standard MCP endpoint usable by **any** MCP client. The OpenClaw *ambient
+recognition* plugin is an optional add-on, installed manually:
+
+```bash
+bash openclaw/plugin/install-plugin.sh   # copies + installs the hook, allowlists it, restarts
+bash openclaw/install.sh --check          # diagnose MCP reachability + registration
+```
+
+It is allowlisted in `plugins.allow` automatically (silences the security warning). Re-run after
+changing the plugin's `dist/index.js`.

@@ -82,6 +82,11 @@ make test
 
 ## OpenClaw integration
 
+> The MCP server is a **standard MCP endpoint** (`http://localhost:8765/mcp`) usable by **any**
+> MCP client (Claude Desktop, other agents). The OpenClaw *ambient recognition* plugin below is an
+> optional add-on that injects what the local graph knows about a paper mentioned in chat — with
+> no tool call. (Plugin distribution is currently a manual install; ClawHub is planned.)
+
 One command — it auto-detects the OpenClaw container, its CLI version (`mcp add` vs `mcp set`),
 and its workspace, then registers the MCP server and installs the skill + heartbeat hook
 (idempotent, never clobbers an existing `HEARTBEAT.md`):
