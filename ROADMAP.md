@@ -96,7 +96,64 @@ ambient conversation, trust/eval, and portability — is detailed in
 | **Unverifiable synthesis** (the value *is* the risk) | **open** — self-graded groundedness ≠ correctness; relational claims have no single source; depth compounds analysis errors → M2 builds verifiability *into* synthesis (L2 spans + L4 abstention), VISION §5 |
 | **Not portable** | **resolved** — `docker compose up -d` + an API key; no generalops/subscription coupling (M4) |
 
-## Concrete next steps
+## Related work & honest positioning
+
+surveyHelper is not the first AI lit-review tool. Knowing the field sharpens what's actually
+differentiated (and what isn't):
+
+| Tool | What it does | Overlap / what they have that we don't |
+|---|---|---|
+| **Scite** | "smart citations": supporting / contradicting / mentioning, at scale | **Contradiction detection itself is not novel** — Scite does it across 1B+ citations. |
+| **Consensus** | claim → how much of 250M papers support/contradict | Scale + search we lack. |
+| **Elicit** | 80-paper evidence matrices, risk-of-bias, structured extraction | Polished extraction + real users. |
+| **NotebookLM** | synthesis, gap analysis, network maps over your sources | Synthesis UX + reach. |
+| **[PaperQA2](https://github.com/Future-House/paper-qa)** (open source) | agentic RAG over papers with in-text citations, local full-text, **benchmarked on LitQA2** (85.2% precision) | The serious prior art. Has a **benchmark + SOTA numbers**; we have neither. |
+
+**What is genuinely differentiated** (and worth doubling down on): not "we find contradictions," but
+**(a) mechanical verbatim verification + honest abstention** (assert only two-sided quotes that a
+program confirms exist in the source — most tools confidently assert relations), **(b) local-first +
+bring-your-own-key**, **(c) relational *synthesis* (lineage/open-problems), not just per-claim
+support**, and **(d) personal memory + ambient recall**. The academic framing is sound — see
+*"Correctness is not Faithfulness in RAG Attributions"* (arXiv:2412.18004), which is exactly our
+VISION §5 (groundedness ≠ correctness).
+
+**What we lack vs all of them:** a benchmark, measured quality, and users. That drives the plan below.
+
+## Next priority: evidence before features (R1–R5)
+
+The mechanism exists; the **evidence that it produces correct, useful output does not**. Reuse
+existing eval frameworks rather than reinventing — [FActScore](https://arxiv.org/abs/2305.14251)
+(claim-decomposition faithfulness), [ALCE](https://arxiv.org/abs/2305.14627) (citation
+precision/recall), [RAGAS](https://docs.ragas.io) (faithfulness metric); datasets/method from
+[SciFact](https://github.com/allenai/scifact) and [LitQA2/LAB-Bench](https://github.com/Future-House/aviary).
+
+- **R1 — Evaluation harness (highest priority).** A hand-checked golden set (~25–30 papers across
+  2–3 domains, with known facts + real cross-paper tensions). Measure **analysis fact-coverage**
+  (FActScore-style) and **synthesis precision *and recall*** (ALCE-style: are surfaced
+  contradictions real? how many real ones are missed?), plus **run-to-run variance** of the verified
+  count (the 0/1/2 jitter is a fragility signal). *Gate:* a reproducible `eval/` + `docs/EVALUATION.md`
+  with real numbers. Builds on the deferred M2b (golden-set, DuckDB CSV-join).
+- **R2 — Prove depth value in a *fresh* domain.** Deep-analyze 20–40 nodes in a non-NLP area; have a
+  **domain expert** judge whether the synthesis surfaces real, correct lineage/contradictions.
+  *Gate:* expert confirms ≥N verified tensions as true; R1 metrics don't collapse off the NLP set
+  (tests prompt over-fitting).
+- **R3 — Verify the *whole* synthesis + calibrated confidence.** Today only contradictions are
+  verified; extend grounding to **lineage** (influence-style evidence: does B's text cite/extend A?)
+  and open-problems, and replace binary verified/tentative with **strong/moderate/weak** tiers.
+  *Gate:* lineage carries verification status; confidence tiers correlate with golden truth.
+- **R4 — One real user.** Put it in front of 1–2 people doing an actual review for ~2 weeks; record
+  which outputs they used vs ignored (validates the *premise* that contradictions — not lineage/gaps
+  — are the scarce value, and that ambient injection helps rather than distracts). *Gate:* an honest
+  usage log, even if it redirects the product.
+- **R5 (later) — Scale/cost benchmark + the understanding model (M5).** Measure $/paper and the cost
+  of synthesizing a whole field (the breadth≫depth economics); only invest in M5 once R1–R4 prove the
+  base value.
+
+*Sequencing:* R1 is the foundation (nothing is measurable without it); **R1 + R4 are highest
+leverage** (internal numbers + external truth). Defer new features until these turn assumptions into
+answers.
+
+## Concrete next steps (feature milestones — secondary to R1–R5 above)
 
 Ordered to close the distance to [`VISION.md`](VISION.md) Horizon 1 (a *grounded, trustworthy*
 research memory). Detail + the OpenClaw-integration design live in
