@@ -45,6 +45,9 @@ async def run_expand(job: asyncpg.Record) -> dict[str, Any]:
     root = job["root_paper_id"]
     max_depth = job["requested_depth"] or 2
 
+    if root is None or await papers.get(root) is None:   # root deleted (e.g. reclaimed stale job)
+        return {"papers_analyzed": 0, "reason": "root_missing"}
+
     await jobs.add_frontier(job_id, root, 0, "full")   # seed (no-op if resuming)
     dismissed = await personal.dismissed_ids()          # personal dedup (plan §7)
 
