@@ -205,10 +205,15 @@ async def get_synthesis(paper_id: int) -> dict[str, Any]:
     pset = s["paper_set"] or []
     paper_index = {p["paper_id"]: p["title"] for p in pset
                    if isinstance(p, dict) and "paper_id" in p}
+    contra = s["contradictions"] or []
+    verified = sum(1 for c in contra if isinstance(c, dict) and c.get("status") == "verified")
     return {"status": "synthesis", "paper_id": paper_id,
             "lineage": s["lineage"], "open_problems": s["open_problems"],
-            "contradictions": s["contradictions"], "landscape": s["map"],
+            "contradictions": contra, "landscape": s["map"],
             "paper_index": paper_index,
+            "trust": {"contradictions_verified": verified,
+                      "contradictions_tentative": len(contra) - verified,
+                      "note": "tentative claims lack two-sided evidence in stored content — treat cautiously"},
             "created_at": s["created_at"].isoformat()}
 
 

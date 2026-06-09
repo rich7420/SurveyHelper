@@ -47,6 +47,8 @@ LLM_MODEL = os.environ.get("SURVEYHELPER_LLM_MODEL", "claude-sonnet-4-6")       
 LLM_SUMMARY_MODEL = os.environ.get("SURVEYHELPER_LLM_SUMMARY_MODEL", "claude-haiku-4-5")  # high-volume
 # Deep analysis defaults to the cheap model (extraction, high-volume); raise per taste.
 ANALYZE_MODEL = os.environ.get("SURVEYHELPER_ANALYZE_MODEL", "claude-haiku-4-5")
+# Independent verifier for synthesis contradictions (cross-model from the sonnet synthesizer).
+VERIFY_MODEL = os.environ.get("SURVEYHELPER_VERIFY_MODEL", "claude-haiku-4-5")
 # Daily LLM spend circuit-breaker (USD). Hitting it pauses LLM work + notifies.
 DAILY_BUDGET_USD = float(os.environ.get("SURVEYHELPER_DAILY_BUDGET_USD", "20"))
 

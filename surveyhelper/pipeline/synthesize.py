@@ -17,6 +17,7 @@ from .. import config
 from ..db import analysis, notifications, papers, syntheses, usage
 from ..llm.claude_cli import complete
 from ..logging_setup import get
+from .verify import verify_contradictions
 
 log = get("synthesize")
 
@@ -38,6 +39,16 @@ _SCHEMA_PROV = (
     '"open_problems": [{"problem": "<recurring/unsolved across the set>", "papers": [<id>, ...]}], '
     '"contradictions": [{"claim": "<what conflicts and how>", "papers": [<id>, <id>]}], '
     '"landscape": {"clusters": ["<theme: representative titles>"], "key_nodes": [<id>, ...]}}')
+
+
+def _content_blob(item: dict) -> str:
+    """Compact, grounded content for a paper — what the verifier checks claims against."""
+    parts = [item.get("title", ""), item.get("summary", "")]
+    if item.get("core_idea"):
+        parts.append(f"core: {item['core_idea']}")
+    if item.get("limitations"):
+        parts.append(f"limits: {item['limitations']}")
+    return " | ".join(p for p in parts if p)
 
 
 def _extract_json(text: str) -> dict | None:
@@ -93,18 +104,26 @@ async def synthesize(root_id: int, *, job_id: int | None = None) -> dict[str, An
                     tokens=c.input_tokens + c.output_tokens, cost_usd=c.cost_usd)
     data = _extract_json(c.text) or {}
 
+    # M2a: verify each contradiction has two-sided evidence; abstain (tentative) otherwise.
+    content = {it["id"]: _content_blob(it) for it in items}
+    contradictions, n_verified = await verify_contradictions(
+        data.get("contradictions") or [], content, job_id=job_id)
+
     # paper_set carries id->title so cited ids in claims are resolvable (B2 provenance).
     sid = await syntheses.save(
         scope="paper", root_or_topic=str(root_id),
         paper_set=[{"paper_id": it["id"], "title": it["title"]} for it in items],
         lineage=data.get("lineage"), open_problems=data.get("open_problems"),
-        contradictions=data.get("contradictions"), map=data.get("landscape"),
+        contradictions=contradictions, map=data.get("landscape"),
         pipeline_version=config.PIPELINE_VERSION,
     )
-    log.info("synthesized root=%s over %d papers cost=$%.3f", root_id, len(items), c.cost_usd)
+    n_contra = len(contradictions)
+    log.info("synthesized root=%s over %d papers; %d/%d contradictions verified",
+             root_id, len(items), n_verified, n_contra)
     await notifications.add("synthesis_ready",
                             {"root_paper_id": root_id, "title": root["title"],
-                             "papers": len(items), "synthesis_id": sid},
+                             "papers": len(items), "synthesis_id": sid,
+                             "contradictions_verified": f"{n_verified}/{n_contra}"},
                             job_id=job_id, digest_key=f"synth:{root_id}")
     return {"synthesized": True, "papers": len(items), "synthesis_id": sid,
-            "cost_usd": c.cost_usd}
+            "contradictions": n_contra, "verified": n_verified, "cost_usd": c.cost_usd}
