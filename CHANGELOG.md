@@ -3,7 +3,7 @@
 All notable changes to surveyHelper. Format follows [Keep a Changelog](https://keepachangelog.com/),
 and this project aims to follow [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] — unreleased
+## [0.1.0] — 2026-06-09
 
 First public release. A local-first research companion: an MCP server + background worker (and an
 optional OpenClaw ambient plugin) that turns a paper mention into a grounded, citation-graph-aware,
