@@ -1,0 +1,19 @@
+{
+  "id": "surveyhelper",
+  "name": "surveyHelper ambient recognition",
+  "description": "On each turn, injects what surveyHelper already knows about a paper mentioned in conversation (from your local research graph), and quietly deepens shallow papers in the background.",
+  "enabledByDefault": true,
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "endpoint": {
+        "type": "string",
+        "description": "surveyHelper HTTP base URL (default http://host.docker.internal:8765)"
+      }
+    }
+  }
+}
