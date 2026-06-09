@@ -42,7 +42,21 @@ grounded steps (2/4/5/6 via PaperQA2) are Phase 2.
 ### MCP tools
 `survey` · `get_paper` · `get_graph` · `job_status` · `pending_notifications`
 
-## Run
+## Quick start (Docker — the whole stack in one command)
+
+```bash
+cp .env.example .env          # set ANTHROPIC_API_KEY — the only thing you need
+docker compose up -d          # pgvector + worker + MCP server; schema auto-applied
+```
+
+The MCP server is then on `http://localhost:8765` (override with `SURVEYHELPER_MCP_PORT`).
+Point your agent at it, or install the OpenClaw plugin (see `openclaw/`). No Postgres setup,
+no Claude subscription, no machine-specific wiring.
+
+**No API key?** Set `SURVEYHELPER_LLM_BACKEND=cli` to reuse an OpenClaw container's `claude -p`
+subscription instead — that path runs natively (below), not in compose.
+
+## Run (native / dev)
 
 ```bash
 # 1. storage (dedicated pgvector Postgres on :5544)
@@ -53,7 +67,7 @@ make schema        # apply schema.sql
 uv sync
 
 # 3. config
-cp .env.example .env   # Phase 0-1 needs no keys (GitHub token optional)
+cp .env.example .env   # set ANTHROPIC_API_KEY, or SURVEYHELPER_LLM_BACKEND=cli
 
 # 4. run (dev)
 make mcp           # MCP server (streamable-http on :8765)

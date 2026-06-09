@@ -1,0 +1,47 @@
+# Full surveyHelper stack: `cp .env.example .env`, set ANTHROPIC_API_KEY, then `docker compose up -d`.
+# Brings up pgvector Postgres (schema auto-applied), the background worker, and the MCP server.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: surveyhelper
+      POSTGRES_PASSWORD: surveyhelper
+      POSTGRES_DB: surveyhelper
+    volumes:
+      - sh_pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro   # applied on first init
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U surveyhelper -d surveyhelper"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: ["python", "-m", "surveyhelper.worker"]
+    environment:
+      SURVEYHELPER_DSN: postgresql://surveyhelper:surveyhelper@db:5432/surveyhelper
+      SURVEYHELPER_LLM_BACKEND: api
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY in .env (or use the cli backend natively)}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mcp:
+    build: .
+    command: ["surveyhelper-mcp"]
+    ports:
+      - "${SURVEYHELPER_MCP_PORT:-8765}:8765"
+    environment:
+      SURVEYHELPER_DSN: postgresql://surveyhelper:surveyhelper@db:5432/surveyhelper
+      SURVEYHELPER_LLM_BACKEND: api
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  sh_pgdata:
